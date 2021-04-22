@@ -1,0 +1,41 @@
+{
+  "fluentMethods": true,
+  "clientRootFolder": "",
+  "relationships": [],
+  "fields": [
+    {
+      "fieldName": "codeParam",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "endPoints",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "attribute01",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "attribute02",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "attribute03",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "attribute04",
+      "fieldType": "String"
+    }
+  ],
+  "changelogDate": "20200505100201",
+  "dto": "no",
+  "searchEngine": false,
+  "service": "serviceClass",
+  "entityTableName": "param_end_point",
+  "databaseType": "sql",
+  "readOnly": false,
+  "jpaMetamodelFiltering": false,
+  "pagination": "no",
+  "name": "ParamEndPoint"
+}

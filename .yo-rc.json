@@ -41,6 +41,8 @@
     "clientTheme": "none",
     "clientThemeVariant": "",
     "withAdminUi": true,
-    "languages": ["en", "fr"]
+    "languages": ["en", "fr"],
+    "entities": ["Tracking", "ParamEndPoint", "ParamGeneral", "SendResponse"],
+    "lastLiquibaseTimestamp": 1619093346000
   }
 }

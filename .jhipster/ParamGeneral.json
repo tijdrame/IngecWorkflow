@@ -1,0 +1,73 @@
+{
+  "fluentMethods": true,
+  "clientRootFolder": "",
+  "relationships": [],
+  "fields": [
+    {
+      "fieldName": "code",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "pays",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "varString1",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "varString2",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "varString3",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "varInteger1",
+      "fieldType": "Integer"
+    },
+    {
+      "fieldName": "varInteger2",
+      "fieldType": "Integer"
+    },
+    {
+      "fieldName": "varInteger3",
+      "fieldType": "Integer"
+    },
+    {
+      "fieldName": "varDouble1",
+      "fieldType": "Double"
+    },
+    {
+      "fieldName": "varDouble2",
+      "fieldType": "Double"
+    },
+    {
+      "fieldName": "varDouble3",
+      "fieldType": "Double"
+    },
+    {
+      "fieldName": "varInstant",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "varDate",
+      "fieldType": "LocalDate"
+    },
+    {
+      "fieldName": "varBoolean",
+      "fieldType": "Boolean"
+    }
+  ],
+  "changelogDate": "20201009133013",
+  "dto": "no",
+  "searchEngine": false,
+  "service": "serviceClass",
+  "entityTableName": "param_general",
+  "databaseType": "sql",
+  "readOnly": false,
+  "jpaMetamodelFiltering": false,
+  "pagination": "no",
+  "name": "ParamGeneral"
+}
