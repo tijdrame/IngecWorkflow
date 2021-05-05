@@ -1,7 +1,11 @@
 package com.boa.api.web.rest;
 
+import com.boa.api.request.LoanRequest;
 import com.boa.api.request.OAuthRequest;
+import com.boa.api.request.SearchClientRequest;
+import com.boa.api.response.LoanResponse;
 import com.boa.api.response.OAuthResponse;
+import com.boa.api.response.SearchClientResponse;
 import com.boa.api.service.ApiService;
 import com.boa.api.service.util.ICodeDescResponse;
 import java.time.Instant;
@@ -28,7 +32,7 @@ public class ApiResource {
 
     @PostMapping("/oAuth")
     public ResponseEntity<OAuthResponse> oAuth(@RequestBody OAuthRequest authRequest, HttpServletRequest request) {
-        log.debug("REST request to oAuth : [{}]", authRequest);
+        log.info("REST request to oAuth : [{}]", authRequest);
         OAuthResponse response = new OAuthResponse();
         if (
             controleParam(authRequest.getCountry()) ||
@@ -43,6 +47,73 @@ public class ApiResource {
             return ResponseEntity.badRequest().header("Authorization", request.getHeader("Authorization")).body(response);
         }
         response = apiService.oAuth(authRequest, request);
+        return ResponseEntity.ok().header("Authorization", request.getHeader("Authorization")).body(response);
+    }
+
+    @PostMapping("/getClients")
+    public ResponseEntity<SearchClientResponse> getClients(@RequestBody SearchClientRequest clientRequest, HttpServletRequest request) {
+        log.debug("REST request to getClients : [{}]", clientRequest);
+        SearchClientResponse response = new SearchClientResponse();
+        if (
+            controleParam(clientRequest.getCountry()) ||
+            controleParam(clientRequest.getClient()) ||
+            controleParam(clientRequest.getAgence()) ||
+            controleParam(clientRequest.getLangue())
+        ) {
+            Locale locale = defineLocale(clientRequest.getLangue());
+            response.setCode(ICodeDescResponse.PARAM_ABSENT_CODE);
+            response.setDateResponse(Instant.now());
+            response.setDescription(messageSource.getMessage("param.oblig", null, locale));
+            return ResponseEntity.badRequest().header("Authorization", request.getHeader("Authorization")).body(response);
+        }
+        response = apiService.getClients(clientRequest, request);
+        return ResponseEntity.ok().header("Authorization", request.getHeader("Authorization")).body(response);
+    }
+
+    @PostMapping("/createLoan")
+    public ResponseEntity<LoanResponse> createLoan(@RequestBody LoanRequest loanRequest, HttpServletRequest request) {
+        log.info("REST request to createLoan : [{}]", loanRequest);
+        LoanResponse response = new LoanResponse();
+        if (
+            controleParam(loanRequest.getCountry()) ||
+            controleParam(loanRequest.getLoantype()) ||
+            controleParam(loanRequest.getClient()) ||
+            controleParam(loanRequest.getCurrentaccount()) ||
+            controleParam(loanRequest.getCurrency()) ||
+            controleParam(loanRequest.getLoanamount()) ||
+            controleParam(loanRequest.getFirstpaymentday()) ||
+            controleParam(loanRequest.getContractdate()) ||
+            controleParam(loanRequest.getDuration()) ||
+            controleParam(loanRequest.getDeferredmode()) ||
+            controleParam(loanRequest.getCalculationtype()) ||
+            controleParam(loanRequest.getReimbursementmode()) ||
+            controleParam(loanRequest.getInterestperiodicity()) ||
+            controleParam(loanRequest.getRatetype()) ||
+            controleParam(loanRequest.getInteresttaxrate()) ||
+            controleParam(loanRequest.getInteretsrecovery()) ||
+            controleParam(loanRequest.getInsurancecalculationmode()) ||
+            controleParam(loanRequest.getInterestsrecalculation()) ||
+            controleParam(loanRequest.getDeferredrate()) ||
+            controleParam(loanRequest.getMargin()) ||
+            controleParam(loanRequest.getFilefeesamount()) ||
+            controleParam(loanRequest.getFilefeestaxflag()) ||
+            controleParam(loanRequest.getStampfeesamount()) ||
+            controleParam(loanRequest.getVariousfeesamount()) ||
+            controleParam(loanRequest.getVariousfeestaxflag()) ||
+            controleParam(loanRequest.getLoanobjectif()) ||
+            controleParam(loanRequest.getLoanbiendesc1()) ||
+            controleParam(loanRequest.getLoanbiendesc2()) ||
+            controleParam(loanRequest.getLoansimulation()) ||
+            controleParam(loanRequest.getUsercode()) ||
+            controleParam(loanRequest.getLangue())
+        ) {
+            Locale locale = defineLocale(loanRequest.getLangue());
+            response.setCode(ICodeDescResponse.PARAM_ABSENT_CODE);
+            response.setDateResponse(Instant.now());
+            response.setDescription(messageSource.getMessage("param.oblig", null, locale));
+            return ResponseEntity.badRequest().header("Authorization", request.getHeader("Authorization")).body(response);
+        }
+        response = apiService.createLoan(loanRequest, request);
         return ResponseEntity.ok().header("Authorization", request.getHeader("Authorization")).body(response);
     }
 

@@ -2,8 +2,12 @@ package com.boa.api.service;
 
 import com.boa.api.domain.ParamEndPoint;
 import com.boa.api.domain.Tracking;
+import com.boa.api.request.LoanRequest;
 import com.boa.api.request.OAuthRequest;
+import com.boa.api.request.SearchClientRequest;
+import com.boa.api.response.LoanResponse;
 import com.boa.api.response.OAuthResponse;
+import com.boa.api.response.SearchClientResponse;
 import com.boa.api.service.util.ICodeDescResponse;
 import com.boa.api.service.util.Utils;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -98,6 +102,8 @@ public class ApiService {
                         );
                 } else {
                     String ret = getMsgEchecAuth(obj, locale);
+                    map.put("p_message", ret);
+                    genericResp.setDataOauth(map);
                     genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
                     genericResp.setDateResponse(Instant.now());
                     genericResp.setDescription(ret);
@@ -160,6 +166,138 @@ public class ApiService {
         return genericResp;
     }
 
+    public SearchClientResponse getClients(SearchClientRequest clientRequest, HttpServletRequest request) {
+        log.info("Enter in getClients=== [{}]", clientRequest);
+        Locale locale = defineLocale(clientRequest.getLangue());
+
+        SearchClientResponse genericResp = new SearchClientResponse();
+        Tracking tracking = new Tracking();
+        tracking.setDateRequest(Instant.now());
+
+        Optional<ParamEndPoint> endPoint = endPointService.findByCodeParam("getClients");
+        if (!endPoint.isPresent()) {
+            genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
+            genericResp.setDescription(messageSource.getMessage("service.absent", null, locale));
+            genericResp.setDateResponse(Instant.now());
+            tracking =
+                createTracking(
+                    tracking,
+                    ICodeDescResponse.ECHEC_CODE,
+                    "getClients",
+                    genericResp.toString(),
+                    clientRequest.toString(),
+                    genericResp.getResponseReference()
+                );
+            trackingService.save(tracking);
+            return genericResp;
+        }
+        try {
+            String jsonStr = new JSONObject()
+                .put("client", clientRequest.getClient())
+                .put("pays", clientRequest.getCountry())
+                .put("agence", clientRequest.getAgence())
+                .toString();
+            HttpURLConnection conn = utils.doConnexion(endPoint.get().getEndPoints(), jsonStr, "application/json", null, null);
+            BufferedReader br = null;
+            JSONObject obj = new JSONObject();
+            String result = "";
+            log.info("resp code envoi [{}]", conn.getResponseCode());
+            if (conn != null && conn.getResponseCode() == 200) {
+                br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                String ligne = br.readLine();
+                while (ligne != null) {
+                    result += ligne;
+                    ligne = br.readLine();
+                }
+                log.info("getClients result ===== [{}]", result);
+                obj = new JSONObject(result);
+                obj = obj.getJSONObject("customers");
+
+                ObjectMapper mapper = new ObjectMapper();
+                Map<String, Object> map = mapper.readValue(obj.toString(), Map.class);
+
+                if (
+                    obj.toString() != null &&
+                    !obj.isNull("customer") &&
+                    !obj.getJSONObject("customer").isNull("rcod") &&
+                    obj.getJSONObject("customer").get("rcod").equals("0100")
+                ) {
+                    genericResp.setCode(ICodeDescResponse.SUCCES_CODE);
+                    genericResp.setDescription(messageSource.getMessage("client.success", null, locale));
+                    genericResp.setDateResponse(Instant.now());
+                    obj = obj.getJSONObject("customer");
+                    map = mapper.readValue(obj.toString(), Map.class);
+                    map.put("rmessage", messageSource.getMessage("client.success", null, locale));
+                    genericResp.setDataGetClient(map);
+                    tracking =
+                        createTracking(
+                            tracking,
+                            ICodeDescResponse.SUCCES_CODE,
+                            request.getRequestURI(),
+                            genericResp.toString(),
+                            clientRequest.toString(),
+                            genericResp.getResponseReference()
+                        );
+                } else {
+                    // obj = obj.getJSONObject("customer");
+                    map.put("rmessage", messageSource.getMessage("client.error", null, locale));
+                    genericResp.setDataGetClient(map);
+                    genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
+                    genericResp.setDateResponse(Instant.now());
+                    genericResp.setDescription(messageSource.getMessage("client.error", null, locale));
+                    tracking =
+                        createTracking(
+                            tracking,
+                            ICodeDescResponse.ECHEC_CODE,
+                            request.getRequestURI(),
+                            genericResp.toString(),
+                            clientRequest.toString(),
+                            genericResp.getResponseReference()
+                        );
+                }
+            } else {
+                br = new BufferedReader(new InputStreamReader(conn.getErrorStream()));
+                String ligne = br.readLine();
+                while (ligne != null) {
+                    result += ligne;
+                    ligne = br.readLine();
+                }
+                log.info("resp envoi error ===== [{}]", result);
+                obj = new JSONObject(result);
+
+                obj = new JSONObject(result);
+                genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
+                genericResp.setDateResponse(Instant.now());
+                genericResp.setDescription(messageSource.getMessage("auth.error.exep", null, locale));
+                tracking =
+                    createTracking(
+                        tracking,
+                        ICodeDescResponse.ECHEC_CODE,
+                        request.getRequestURI(),
+                        genericResp.toString(),
+                        clientRequest.toString(),
+                        genericResp.getResponseReference()
+                    );
+            }
+        } catch (Exception e) {
+            log.error("Exception in oAuth [{}]", e);
+            genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
+            genericResp.setDateResponse(Instant.now());
+            genericResp.setDescription(messageSource.getMessage("auth.error.exep", null, locale) + e.getMessage());
+            tracking =
+                createTracking(
+                    tracking,
+                    ICodeDescResponse.ECHEC_CODE,
+                    request.getRequestURI(),
+                    e.getMessage(),
+                    clientRequest.toString(),
+                    genericResp.getResponseReference()
+                );
+        }
+        trackingService.save(tracking);
+        return genericResp;
+    }
+
     private String getMsgEchecAuth(JSONObject obj, Locale locale) {
         log.info("in getMsgEchecAuth [{}]", obj.toString());
         try {
@@ -196,6 +334,79 @@ public class ApiService {
             return messageSource.getMessage("auth.error.exep", null, locale) + e.getMessage();
         }
         return messageSource.getMessage("auth.error.exep", null, locale);
+    }
+
+    public LoanResponse createLoan(LoanRequest loanRequest, HttpServletRequest request) {
+        log.info("Enter in createLoan=== [{}]", loanRequest);
+        Locale locale = defineLocale(loanRequest.getLangue());
+
+        LoanResponse genericResp = new LoanResponse();
+        Tracking tracking = new Tracking();
+        tracking.setDateRequest(Instant.now());
+
+        Optional<ParamEndPoint> endPoint = endPointService.findByCodeParam("createLoan");
+        if (!endPoint.isPresent()) {
+            genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
+            genericResp.setDescription(messageSource.getMessage("service.absent", null, locale));
+            genericResp.setDateResponse(Instant.now());
+            tracking =
+                createTracking(
+                    tracking,
+                    ICodeDescResponse.ECHEC_CODE,
+                    "createLoan",
+                    genericResp.toString(),
+                    loanRequest.toString(),
+                    genericResp.getResponseReference()
+                );
+            trackingService.save(tracking);
+            return genericResp;
+        }
+        try {
+            String jsonStr = new JSONObject()
+                .put("loanType", loanRequest.getLoantype())
+                .put("client", loanRequest.getClient())
+                .put("currentAccount", loanRequest.getCurrentaccount())
+                .put("currency", loanRequest.getCurrency())
+                .put("loanAmount", loanRequest.getLoanamount())
+                .put("currentAccount", loanRequest.getCurrentaccount())
+                .put("loanType", loanRequest.getLoantype())
+                .put("client", loanRequest.getClient())
+                .put("currentAccount", loanRequest.getCurrentaccount())
+                .put("currentAccount", loanRequest.getCurrentaccount())
+                .put("loanType", loanRequest.getLoantype())
+                .put("client", loanRequest.getClient())
+                .put("currentAccount", loanRequest.getCurrentaccount())
+                .put("loanType", loanRequest.getLoantype())
+                .put("client", loanRequest.getClient())
+                .put("currentAccount", loanRequest.getCurrentaccount())
+                .put("loanType", loanRequest.getLoantype())
+                .put("client", loanRequest.getClient())
+                .put("currentAccount", loanRequest.getCurrentaccount())
+                .put("currentAccount", loanRequest.getCurrentaccount())
+                .put("loanType", loanRequest.getLoantype())
+                .put("client", loanRequest.getClient())
+                .put("currentAccount", loanRequest.getCurrentaccount())
+                .put("loanType", loanRequest.getLoantype())
+                .put("client", loanRequest.getClient())
+                .put("currentAccount", loanRequest.getCurrentaccount())
+                .put("loanType", loanRequest.getLoantype())
+                .put("client", loanRequest.getClient())
+                .put("currentAccount", loanRequest.getCurrentaccount())
+                .put("currentAccount", loanRequest.getCurrentaccount())
+                .put("loanType", loanRequest.getLoantype())
+                .put("client", loanRequest.getClient())
+                .put("currentAccount", loanRequest.getCurrentaccount())
+                .put("loanType", loanRequest.getLoantype())
+                .put("client", loanRequest.getClient())
+                .put("currentAccount", loanRequest.getCurrentaccount())
+                .put("loanType", loanRequest.getLoantype())
+                .toString();
+            log.info("to send [{}]", jsonStr);
+            BufferedReader br = null;
+            JSONObject obj = new JSONObject();
+            String result = "";
+        } catch (Exception e) {}
+        return genericResp;
     }
 
     public Tracking createTracking(Tracking tracking, String code, String endPoint, String result, String req, String reqId) {
