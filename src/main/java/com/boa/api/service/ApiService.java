@@ -280,7 +280,7 @@ public class ApiService {
                     );
             }
         } catch (Exception e) {
-            log.error("Exception in oAuth [{}]", e);
+            log.error("Exception in getclients [{}]", e);
             genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
             genericResp.setDateResponse(Instant.now());
             genericResp.setDescription(messageSource.getMessage("auth.error.exep", null, locale) + e.getMessage());
@@ -368,44 +368,139 @@ public class ApiService {
                 .put("currentAccount", loanRequest.getCurrentaccount())
                 .put("currency", loanRequest.getCurrency())
                 .put("loanAmount", loanRequest.getLoanamount())
-                .put("currentAccount", loanRequest.getCurrentaccount())
-                .put("loanType", loanRequest.getLoantype())
-                .put("client", loanRequest.getClient())
-                .put("currentAccount", loanRequest.getCurrentaccount())
-                .put("currentAccount", loanRequest.getCurrentaccount())
-                .put("loanType", loanRequest.getLoantype())
-                .put("client", loanRequest.getClient())
-                .put("currentAccount", loanRequest.getCurrentaccount())
-                .put("loanType", loanRequest.getLoantype())
-                .put("client", loanRequest.getClient())
-                .put("currentAccount", loanRequest.getCurrentaccount())
-                .put("loanType", loanRequest.getLoantype())
-                .put("client", loanRequest.getClient())
-                .put("currentAccount", loanRequest.getCurrentaccount())
-                .put("currentAccount", loanRequest.getCurrentaccount())
-                .put("loanType", loanRequest.getLoantype())
-                .put("client", loanRequest.getClient())
-                .put("currentAccount", loanRequest.getCurrentaccount())
-                .put("loanType", loanRequest.getLoantype())
-                .put("client", loanRequest.getClient())
-                .put("currentAccount", loanRequest.getCurrentaccount())
-                .put("loanType", loanRequest.getLoantype())
-                .put("client", loanRequest.getClient())
-                .put("currentAccount", loanRequest.getCurrentaccount())
-                .put("currentAccount", loanRequest.getCurrentaccount())
-                .put("loanType", loanRequest.getLoantype())
-                .put("client", loanRequest.getClient())
-                .put("currentAccount", loanRequest.getCurrentaccount())
-                .put("loanType", loanRequest.getLoantype())
-                .put("client", loanRequest.getClient())
-                .put("currentAccount", loanRequest.getCurrentaccount())
-                .put("loanType", loanRequest.getLoantype())
+                .put("firstpaymentday", loanRequest.getFirstpaymentday())
+                .put("contractdate", loanRequest.getContractdate())
+                .put("duration", loanRequest.getDuration())
+                .put("deferredmode", loanRequest.getDeferredmode())
+                .put("endmonth_anniversary", loanRequest.getEndmonthAnniversary())
+                .put("calculationtype", loanRequest.getCalculationtype())
+                .put("reimbursementmode", loanRequest.getReimbursementmode())
+                .put("interestperiodicity", loanRequest.getInterestperiodicity())
+                .put("reimbursementperiodicity", loanRequest.getReimbursementperiodicity())
+                .put("ratetype", loanRequest.getRatetype())
+                .put("interesttaxrate", loanRequest.getInteresttaxrate())
+                .put("advance_maturity", loanRequest.getAdvancematurity())
+                .put("interetsrecovery", loanRequest.getInteretsrecovery())
+                .put("insurancecalculationmode", loanRequest.getInsurancecalculationmode())
+                .put("interestsrecalculation", loanRequest.getInterestsrecalculation())
+                .put("deferredrate", loanRequest.getDeferredrate())
+                .put("margin", loanRequest.getMargin())
+                .put("filefeesamount", loanRequest.getFilefeesamount())
+                .put("filefeestaxflag", loanRequest.getFilefeestaxflag())
+                .put("stampfeesamount", loanRequest.getStampfeesamount())
+                .put("variousfeesamount", loanRequest.getVariousfeesamount())
+                .put("variousfeestaxflag", loanRequest.getVariousfeestaxflag())
+                .put("insurancefeesamount", loanRequest.getInsurancefeesamount())
+                .put("insurancefeestaxflag", loanRequest.getInsurancefeestaxflag())
+                .put("loanobjectif", loanRequest.getLoanobjectif())
+                .put("loanbiendesc1", loanRequest.getLoanbiendesc1())
+                .put("loanbiendesc2", loanRequest.getLoanbiendesc2())
+                .put("loansimulation", loanRequest.getLoansimulation())
+                .put("usercode", loanRequest.getUsercode())
+                .put("language", loanRequest.getLangue())
+                .put("referenceIn", loanRequest.getReferenceIn())
+                .put("sequence", loanRequest.getSequence())
+                .put("pays", loanRequest.getCountry())
                 .toString();
             log.info("to send [{}]", jsonStr);
+            HttpURLConnection conn = utils.doConnexion(endPoint.get().getEndPoints(), jsonStr, "application/json", null, null);
             BufferedReader br = null;
             JSONObject obj = new JSONObject();
             String result = "";
-        } catch (Exception e) {}
+            log.info("resp code envoi [{}]", conn.getResponseCode());
+            if (conn != null && conn.getResponseCode() == 200) {
+                br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                String ligne = br.readLine();
+                while (ligne != null) {
+                    result += ligne;
+                    ligne = br.readLine();
+                }
+                log.info("create loan result ===== [{}]", result);
+                obj = new JSONObject(result);
+                obj = obj.getJSONObject("customers"); //TODO
+
+                ObjectMapper mapper = new ObjectMapper();
+                Map<String, Object> map = mapper.readValue(obj.toString(), Map.class);
+
+                if (
+                    obj.toString() != null &&
+                    !obj.isNull("customer") &&
+                    !obj.getJSONObject("customer").isNull("rcod") &&
+                    obj.getJSONObject("customer").get("rcod").equals("0100")
+                ) { //TODO
+                    genericResp.setCode(ICodeDescResponse.SUCCES_CODE);
+                    genericResp.setDescription(messageSource.getMessage("client.success", null, locale));
+                    genericResp.setDateResponse(Instant.now());
+                    obj = obj.getJSONObject("customer");
+                    map = mapper.readValue(obj.toString(), Map.class);
+                    map.put("rmessage", messageSource.getMessage("client.success", null, locale));
+                    genericResp.setDataCreateLoan(map);
+                    tracking =
+                        createTracking(
+                            tracking,
+                            ICodeDescResponse.SUCCES_CODE,
+                            request.getRequestURI(),
+                            genericResp.toString(),
+                            loanRequest.toString(),
+                            genericResp.getResponseReference()
+                        );
+                } else {
+                    // obj = obj.getJSONObject("customer");
+                    map.put("rmessage", messageSource.getMessage("client.error", null, locale));
+                    genericResp.setDataCreateLoan(map);
+                    genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
+                    genericResp.setDateResponse(Instant.now());
+                    genericResp.setDescription(messageSource.getMessage("client.error", null, locale));
+                    tracking =
+                        createTracking(
+                            tracking,
+                            ICodeDescResponse.ECHEC_CODE,
+                            request.getRequestURI(),
+                            genericResp.toString(),
+                            loanRequest.toString(),
+                            genericResp.getResponseReference()
+                        );
+                }
+            } else {
+                br = new BufferedReader(new InputStreamReader(conn.getErrorStream()));
+                String ligne = br.readLine();
+                while (ligne != null) {
+                    result += ligne;
+                    ligne = br.readLine();
+                }
+                log.info("resp envoi error ===== [{}]", result);
+                obj = new JSONObject(result);
+
+                obj = new JSONObject(result);
+                genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
+                genericResp.setDateResponse(Instant.now());
+                genericResp.setDescription(messageSource.getMessage("auth.error.exep", null, locale));
+                tracking =
+                    createTracking(
+                        tracking,
+                        ICodeDescResponse.ECHEC_CODE,
+                        request.getRequestURI(),
+                        genericResp.toString(),
+                        loanRequest.toString(),
+                        genericResp.getResponseReference()
+                    );
+            }
+        } catch (Exception e) {
+            log.error("Exception in getclients [{}]", e);
+            genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
+            genericResp.setDateResponse(Instant.now());
+            genericResp.setDescription(messageSource.getMessage("auth.error.exep", null, locale) + e.getMessage());
+            tracking =
+                createTracking(
+                    tracking,
+                    ICodeDescResponse.ECHEC_CODE,
+                    request.getRequestURI(),
+                    e.getMessage(),
+                    loanRequest.toString(),
+                    genericResp.getResponseReference()
+                );
+        }
+        trackingService.save(tracking);
         return genericResp;
     }
 

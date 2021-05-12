@@ -9,5 +9,5 @@ import lombok.Data;
 @Data
 public class LoanResponse extends GenericResponse {
 
-    private Map<String, Object> dataGetClient;
+    private Map<String, Object> dataCreateLoan;
 }
