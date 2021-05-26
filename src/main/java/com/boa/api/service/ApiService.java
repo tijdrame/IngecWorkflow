@@ -596,7 +596,7 @@ public class ApiService {
                 }
                 log.info("createCreditIg result ===== [{}]", result);
                 obj = new JSONObject(result);
-                obj = obj.getJSONObject("wf-credit");
+                obj = obj.getJSONObject("wfcredit");
 
                 ObjectMapper mapper = new ObjectMapper();
                 Map<String, Object> map = mapper.readValue(obj.toString(), Map.class);
