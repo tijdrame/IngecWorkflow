@@ -2,9 +2,11 @@ package com.boa.api.service;
 
 import com.boa.api.domain.ParamEndPoint;
 import com.boa.api.domain.Tracking;
+import com.boa.api.request.CreditIgorRequest;
 import com.boa.api.request.LoanRequest;
 import com.boa.api.request.OAuthRequest;
 import com.boa.api.request.SearchClientRequest;
+import com.boa.api.response.CreditIgorResponse;
 import com.boa.api.response.LoanResponse;
 import com.boa.api.response.OAuthResponse;
 import com.boa.api.response.SearchClientResponse;
@@ -91,6 +93,8 @@ public class ApiService {
                     genericResp.setCode(ICodeDescResponse.SUCCES_CODE);
                     genericResp.setDescription(messageSource.getMessage("auth.success", null, locale));
                     genericResp.setDateResponse(Instant.now());
+                    map.put("p_message", messageSource.getMessage("auth.success", null, locale));
+                    genericResp.setDataOauth(map);
                     tracking =
                         createTracking(
                             tracking,
@@ -497,6 +501,181 @@ public class ApiService {
                     request.getRequestURI(),
                     e.getMessage(),
                     loanRequest.toString(),
+                    genericResp.getResponseReference()
+                );
+        }
+        trackingService.save(tracking);
+        return genericResp;
+    }
+
+    public CreditIgorResponse createCreditIg(CreditIgorRequest creditRequest, HttpServletRequest request) {
+        log.info("Enter in createCreditIg=== [{}]", creditRequest);
+        Locale locale = defineLocale(creditRequest.getLangue());
+
+        CreditIgorResponse genericResp = new CreditIgorResponse();
+        Tracking tracking = new Tracking();
+        tracking.setDateRequest(Instant.now());
+
+        Optional<ParamEndPoint> endPoint = endPointService.findByCodeParam("createCreditIg");
+        if (!endPoint.isPresent()) {
+            genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
+            genericResp.setDescription(messageSource.getMessage("service.absent", null, locale));
+            genericResp.setDateResponse(Instant.now());
+            tracking =
+                createTracking(
+                    tracking,
+                    ICodeDescResponse.ECHEC_CODE,
+                    "getClients",
+                    genericResp.toString(),
+                    creditRequest.toString(),
+                    genericResp.getResponseReference()
+                );
+            trackingService.save(tracking);
+            return genericResp;
+        }
+        try {
+            String jsonStr = new JSONObject()
+                .put("p_pays", creditRequest.getCountry())
+                .put("p_nooperingec", creditRequest.getNooperIngec())
+                .put("p_njandb", creditRequest.getNjandb())
+                .put("p_devise", creditRequest.getDevise())
+                .put("p_datoper", creditRequest.getDateOper())
+                .put("p_datdep", creditRequest.getDateDep())
+                .put("p_daterpremremb", creditRequest.getDatePremRemb())
+                .put("p_mtpret", creditRequest.getMontantPret())
+                .put("p_valide", creditRequest.getValide())
+                .put("p_txtax", creditRequest.getTxtax())
+                .put("p_moddif", creditRequest.getModdif())
+                .put("p_ncgprt", creditRequest.getNcgprt())
+                .put("p_client", creditRequest.getClient())
+                .put("p_compte", creditRequest.getCompte())
+                .put("p_cptdeb", creditRequest.getCompteDeb())
+                .put("p_perint", creditRequest.getPerint())
+                .put("p_typrmb", creditRequest.getTyprmb())
+                .put("p_intdif", creditRequest.getIntdif())
+                .put("p_perrmb", creditRequest.getPerrmb())
+                .put("p_xrecalc", creditRequest.getXrecalc())
+                .put("p_xcomdec", creditRequest.getXcomdec())
+                .put("p_typcalc", creditRequest.getTypcalc())
+                .put("p_modrmb", creditRequest.getModrmb())
+                .put("p_typtaux", creditRequest.getTypetaux())
+                .put("p_xrecalcd", creditRequest.getXrecalcd())
+                .put("p_modass", creditRequest.getModass())
+                .put("p_xdos", creditRequest.getXdos())
+                .put("p_fraisdoss", creditRequest.getFraisDossier())
+                .put("p_txt1", creditRequest.getTxt1())
+                .put("p_txavg", creditRequest.getTxavg())
+                .put("p_xtaxdos", creditRequest.getXtaxdos())
+                .put("p_mnttaxdos", creditRequest.getMnttaxdos())
+                .put("p_txfongar", creditRequest.getTxfongar())
+                .put("p_mntfongar", creditRequest.getMntfongar())
+                .put("p_txfonass", creditRequest.getTxfonass())
+                .put("p_mntfonass", creditRequest.getMntfonass())
+                .put("p_txassini", creditRequest.getTxassini())
+                .put("p_mntnetcli", creditRequest.getMntnetcli())
+                .put("p_mtassur", creditRequest.getMtassur())
+                .put("p_datrmbfm", creditRequest.getDatrmbfm())
+                .put("p_cvmnttaxdos", creditRequest.getCvmnttaxdos())
+                .put("p_cptass", creditRequest.getCptass())
+                .put("p_duree", creditRequest.getDuree())
+                .put("p_txannuel", creditRequest.getTxannuel())
+                .put("p_datcontr", creditRequest.getDatcontr())
+                .toString();
+            log.info("request create credit ig [{}]", jsonStr);
+            HttpURLConnection conn = utils.doConnexion(endPoint.get().getEndPoints(), jsonStr, "application/json", null, null);
+            BufferedReader br = null;
+            JSONObject obj = new JSONObject();
+            String result = "";
+            log.info("resp code envoi [{}]", conn.getResponseCode());
+            if (conn != null && conn.getResponseCode() == 200) {
+                br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                String ligne = br.readLine();
+                while (ligne != null) {
+                    result += ligne;
+                    ligne = br.readLine();
+                }
+                log.info("createCreditIg result ===== [{}]", result);
+                obj = new JSONObject(result);
+                obj = obj.getJSONObject("wf-credit");
+
+                ObjectMapper mapper = new ObjectMapper();
+                Map<String, Object> map = mapper.readValue(obj.toString(), Map.class);
+
+                if (
+                    obj.toString() != null &&
+                    !obj.isNull("response") &&
+                    !obj.getJSONObject("response").isNull("p_code_retour") &&
+                    obj.getJSONObject("response").get("p_code_retour").equals("0100")
+                ) {
+                    genericResp.setCode(ICodeDescResponse.SUCCES_CODE);
+                    genericResp.setDescription(messageSource.getMessage("credit.ig.success", null, locale));
+                    genericResp.setDateResponse(Instant.now());
+                    obj = obj.getJSONObject("response");
+                    map = mapper.readValue(obj.toString(), Map.class);
+                    map.put("p_message_retour", messageSource.getMessage("credit.ig.success", null, locale));
+                    genericResp.setDataCredit(map);
+                    tracking =
+                        createTracking(
+                            tracking,
+                            ICodeDescResponse.SUCCES_CODE,
+                            request.getRequestURI(),
+                            genericResp.toString(),
+                            creditRequest.toString(),
+                            genericResp.getResponseReference()
+                        );
+                } else {
+                    // obj = obj.getJSONObject("customer");
+                    map.put("p_message_retour", messageSource.getMessage("credit.ig.error", null, locale));
+                    genericResp.setDataCredit(map);
+                    genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
+                    genericResp.setDateResponse(Instant.now());
+                    genericResp.setDescription(messageSource.getMessage("credit.ig.error", null, locale));
+                    tracking =
+                        createTracking(
+                            tracking,
+                            ICodeDescResponse.ECHEC_CODE,
+                            request.getRequestURI(),
+                            genericResp.toString(),
+                            creditRequest.toString(),
+                            genericResp.getResponseReference()
+                        );
+                }
+            } else {
+                br = new BufferedReader(new InputStreamReader(conn.getErrorStream()));
+                String ligne = br.readLine();
+                while (ligne != null) {
+                    result += ligne;
+                    ligne = br.readLine();
+                }
+                log.info("resp credit ig error ===== [{}]", result);
+                obj = new JSONObject(result);
+
+                obj = new JSONObject(result);
+                genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
+                genericResp.setDateResponse(Instant.now());
+                genericResp.setDescription(messageSource.getMessage("auth.error.exep", null, locale));
+                tracking =
+                    createTracking(
+                        tracking,
+                        ICodeDescResponse.ECHEC_CODE,
+                        request.getRequestURI(),
+                        genericResp.toString(),
+                        creditRequest.toString(),
+                        genericResp.getResponseReference()
+                    );
+            }
+        } catch (Exception e) {
+            log.error("Exception in creditIg [{}]", e);
+            genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
+            genericResp.setDateResponse(Instant.now());
+            genericResp.setDescription(messageSource.getMessage("auth.error.exep", null, locale) + e.getMessage());
+            tracking =
+                createTracking(
+                    tracking,
+                    ICodeDescResponse.ECHEC_CODE,
+                    request.getRequestURI(),
+                    e.getMessage(),
+                    creditRequest.toString(),
                     genericResp.getResponseReference()
                 );
         }

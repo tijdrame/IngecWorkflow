@@ -1,8 +1,10 @@
 package com.boa.api.web.rest;
 
+import com.boa.api.request.CreditIgorRequest;
 import com.boa.api.request.LoanRequest;
 import com.boa.api.request.OAuthRequest;
 import com.boa.api.request.SearchClientRequest;
+import com.boa.api.response.CreditIgorResponse;
 import com.boa.api.response.LoanResponse;
 import com.boa.api.response.OAuthResponse;
 import com.boa.api.response.SearchClientResponse;
@@ -114,6 +116,26 @@ public class ApiResource {
             return ResponseEntity.badRequest().header("Authorization", request.getHeader("Authorization")).body(response);
         }
         response = apiService.createLoan(loanRequest, request);
+        return ResponseEntity.ok().header("Authorization", request.getHeader("Authorization")).body(response);
+    }
+
+    @PostMapping("/createCreditIg")
+    public ResponseEntity<CreditIgorResponse> createCreditIg(@RequestBody CreditIgorRequest creditRequest, HttpServletRequest request) {
+        log.debug("REST request to createCreditIg : [{}]", creditRequest);
+        CreditIgorResponse response = new CreditIgorResponse();
+        if (
+            controleParam(creditRequest.getCountry()) ||
+            //controleParam(clientRequest.getClient()) ||
+            //controleParam(clientRequest.getAgence()) ||
+            controleParam(creditRequest.getLangue())
+        ) {
+            Locale locale = defineLocale(creditRequest.getLangue());
+            response.setCode(ICodeDescResponse.PARAM_ABSENT_CODE);
+            response.setDateResponse(Instant.now());
+            response.setDescription(messageSource.getMessage("param.oblig", null, locale));
+            return ResponseEntity.badRequest().header("Authorization", request.getHeader("Authorization")).body(response);
+        }
+        response = apiService.createCreditIg(creditRequest, request);
         return ResponseEntity.ok().header("Authorization", request.getHeader("Authorization")).body(response);
     }
 
