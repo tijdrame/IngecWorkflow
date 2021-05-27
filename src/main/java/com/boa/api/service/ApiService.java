@@ -6,10 +6,12 @@ import com.boa.api.request.CreditIgorRequest;
 import com.boa.api.request.LoanRequest;
 import com.boa.api.request.OAuthRequest;
 import com.boa.api.request.SearchClientRequest;
+import com.boa.api.request.ValiderCreditIgRequest;
 import com.boa.api.response.CreditIgorResponse;
 import com.boa.api.response.LoanResponse;
 import com.boa.api.response.OAuthResponse;
 import com.boa.api.response.SearchClientResponse;
+import com.boa.api.response.ValiderCreditIgResponse;
 import com.boa.api.service.util.ICodeDescResponse;
 import com.boa.api.service.util.Utils;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -525,7 +527,7 @@ public class ApiService {
                 createTracking(
                     tracking,
                     ICodeDescResponse.ECHEC_CODE,
-                    "getClients",
+                    "createCreditIg",
                     genericResp.toString(),
                     creditRequest.toString(),
                     genericResp.getResponseReference()
@@ -666,6 +668,139 @@ public class ApiService {
             }
         } catch (Exception e) {
             log.error("Exception in creditIg [{}]", e);
+            genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
+            genericResp.setDateResponse(Instant.now());
+            genericResp.setDescription(messageSource.getMessage("auth.error.exep", null, locale) + e.getMessage());
+            tracking =
+                createTracking(
+                    tracking,
+                    ICodeDescResponse.ECHEC_CODE,
+                    request.getRequestURI(),
+                    e.getMessage(),
+                    creditRequest.toString(),
+                    genericResp.getResponseReference()
+                );
+        }
+        trackingService.save(tracking);
+        return genericResp;
+    }
+
+    public ValiderCreditIgResponse validerCreditIg(ValiderCreditIgRequest creditRequest, HttpServletRequest request) {
+        log.info("Enter in validerCreditIg=== [{}]", creditRequest);
+        Locale locale = defineLocale(creditRequest.getLangue());
+
+        ValiderCreditIgResponse genericResp = new ValiderCreditIgResponse();
+        Tracking tracking = new Tracking();
+        tracking.setDateRequest(Instant.now());
+
+        Optional<ParamEndPoint> endPoint = endPointService.findByCodeParam("validerCreditIg");
+        if (!endPoint.isPresent()) {
+            genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
+            genericResp.setDescription(messageSource.getMessage("service.absent", null, locale));
+            genericResp.setDateResponse(Instant.now());
+            tracking =
+                createTracking(
+                    tracking,
+                    ICodeDescResponse.ECHEC_CODE,
+                    "ValiderCreditIg",
+                    genericResp.toString(),
+                    creditRequest.toString(),
+                    genericResp.getResponseReference()
+                );
+            trackingService.save(tracking);
+            return genericResp;
+        }
+        try {
+            String jsonStr = new JSONObject()
+                .put("pays", creditRequest.getCountry())
+                .put("pnoop", creditRequest.getNooper())
+                .put("expl", creditRequest.getExpl())
+                .toString();
+            log.info("request validate credit ig [{}]", jsonStr);
+            HttpURLConnection conn = utils.doConnexion(endPoint.get().getEndPoints(), jsonStr, "application/json", null, null);
+            BufferedReader br = null;
+            JSONObject obj = new JSONObject();
+            String result = "";
+            log.info("resp code validate [{}]", conn.getResponseCode());
+            if (conn != null && conn.getResponseCode() == 200) {
+                br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                String ligne = br.readLine();
+                while (ligne != null) {
+                    result += ligne;
+                    ligne = br.readLine();
+                }
+                log.info("ValiderCreditIg result ===== [{}]", result);
+                obj = new JSONObject(result);
+                obj = obj.getJSONObject("wfcredit");
+
+                ObjectMapper mapper = new ObjectMapper();
+                Map<String, Object> map = mapper.readValue(obj.toString(), Map.class);
+
+                if (
+                    obj.toString() != null &&
+                    !obj.isNull("response") &&
+                    !obj.getJSONObject("response").isNull("p_code_retour") &&
+                    obj.getJSONObject("response").get("p_code_retour").equals("0100")
+                ) {
+                    genericResp.setCode(ICodeDescResponse.SUCCES_CODE);
+                    genericResp.setDescription(messageSource.getMessage("validate.ig.success", null, locale));
+                    genericResp.setDateResponse(Instant.now());
+                    obj = obj.getJSONObject("response");
+                    map = mapper.readValue(obj.toString(), Map.class);
+                    map.put("p_message_retour", messageSource.getMessage("validate.ig.success", null, locale));
+                    genericResp.setDataCredit(map);
+                    tracking =
+                        createTracking(
+                            tracking,
+                            ICodeDescResponse.SUCCES_CODE,
+                            request.getRequestURI(),
+                            genericResp.toString(),
+                            creditRequest.toString(),
+                            genericResp.getResponseReference()
+                        );
+                } else {
+                    // obj = obj.getJSONObject("customer");
+                    map.put("p_message_retour", messageSource.getMessage("validate.ig.error", null, locale));
+                    genericResp.setDataCredit(map);
+                    genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
+                    genericResp.setDateResponse(Instant.now());
+                    genericResp.setDescription(messageSource.getMessage("validate.ig.error", null, locale));
+                    tracking =
+                        createTracking(
+                            tracking,
+                            ICodeDescResponse.ECHEC_CODE,
+                            request.getRequestURI(),
+                            genericResp.toString(),
+                            creditRequest.toString(),
+                            genericResp.getResponseReference()
+                        );
+                }
+            } else {
+                br = new BufferedReader(new InputStreamReader(conn.getErrorStream()));
+                String ligne = br.readLine();
+                while (ligne != null) {
+                    result += ligne;
+                    ligne = br.readLine();
+                }
+                log.info("resp validate ig error ===== [{}]", result);
+                obj = new JSONObject(result);
+
+                obj = new JSONObject(result);
+                genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
+                genericResp.setDateResponse(Instant.now());
+                genericResp.setDescription(messageSource.getMessage("auth.error.exep", null, locale));
+                tracking =
+                    createTracking(
+                        tracking,
+                        ICodeDescResponse.ECHEC_CODE,
+                        request.getRequestURI(),
+                        genericResp.toString(),
+                        creditRequest.toString(),
+                        genericResp.getResponseReference()
+                    );
+            }
+        } catch (Exception e) {
+            log.error("Exception in validateCreditIg [{}]", e);
             genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
             genericResp.setDateResponse(Instant.now());
             genericResp.setDescription(messageSource.getMessage("auth.error.exep", null, locale) + e.getMessage());

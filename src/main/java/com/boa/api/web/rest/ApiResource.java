@@ -4,10 +4,12 @@ import com.boa.api.request.CreditIgorRequest;
 import com.boa.api.request.LoanRequest;
 import com.boa.api.request.OAuthRequest;
 import com.boa.api.request.SearchClientRequest;
+import com.boa.api.request.ValiderCreditIgRequest;
 import com.boa.api.response.CreditIgorResponse;
 import com.boa.api.response.LoanResponse;
 import com.boa.api.response.OAuthResponse;
 import com.boa.api.response.SearchClientResponse;
+import com.boa.api.response.ValiderCreditIgResponse;
 import com.boa.api.service.ApiService;
 import com.boa.api.service.util.ICodeDescResponse;
 import java.time.Instant;
@@ -136,6 +138,29 @@ public class ApiResource {
             return ResponseEntity.badRequest().header("Authorization", request.getHeader("Authorization")).body(response);
         }
         response = apiService.createCreditIg(creditRequest, request);
+        return ResponseEntity.ok().header("Authorization", request.getHeader("Authorization")).body(response);
+    }
+
+    @PostMapping("/validerCreditIg")
+    public ResponseEntity<ValiderCreditIgResponse> validerCreditIg(
+        @RequestBody ValiderCreditIgRequest creditRequest,
+        HttpServletRequest request
+    ) {
+        log.debug("REST request to validerCreditIg : [{}]", creditRequest);
+        ValiderCreditIgResponse response = new ValiderCreditIgResponse();
+        if (
+            controleParam(creditRequest.getCountry()) ||
+            //controleParam(clientRequest.getClient()) ||
+            //controleParam(clientRequest.getAgence()) ||
+            controleParam(creditRequest.getLangue())
+        ) {
+            Locale locale = defineLocale(creditRequest.getLangue());
+            response.setCode(ICodeDescResponse.PARAM_ABSENT_CODE);
+            response.setDateResponse(Instant.now());
+            response.setDescription(messageSource.getMessage("param.oblig", null, locale));
+            return ResponseEntity.badRequest().header("Authorization", request.getHeader("Authorization")).body(response);
+        }
+        response = apiService.validerCreditIg(creditRequest, request);
         return ResponseEntity.ok().header("Authorization", request.getHeader("Authorization")).body(response);
     }
 
