@@ -35,7 +35,7 @@ spring:
     type: com.zaxxer.hikari.HikariDataSource
     url: jdbc:postgresql://10.132.71.49:5432/ingecdb
     username: boaingec
-    password: P@sswd
+    password: P@sswd21
     hikari:
       poolName: Hikari
       auto-commit: false
