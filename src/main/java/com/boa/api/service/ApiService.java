@@ -25,7 +25,7 @@ import java.util.Optional;
 import javax.servlet.http.HttpServletRequest;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.configurationprocessor.json.JSONObject;
+import org.json.JSONObject;
 import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Service;
 
