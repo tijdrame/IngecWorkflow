@@ -1,11 +1,13 @@
 package com.boa.api.web.rest;
 
 import com.boa.api.request.CreditIgorRequest;
+import com.boa.api.request.InfosProfilRequest;
 import com.boa.api.request.LoanRequest;
 import com.boa.api.request.OAuthRequest;
 import com.boa.api.request.SearchClientRequest;
 import com.boa.api.request.ValiderCreditIgRequest;
 import com.boa.api.response.CreditIgorResponse;
+import com.boa.api.response.InfosProfilResponse;
 import com.boa.api.response.LoanResponse;
 import com.boa.api.response.OAuthResponse;
 import com.boa.api.response.SearchClientResponse;
@@ -161,6 +163,25 @@ public class ApiResource {
             return ResponseEntity.badRequest().header("Authorization", request.getHeader("Authorization")).body(response);
         }
         response = apiService.validerCreditIg(creditRequest, request);
+        return ResponseEntity.ok().header("Authorization", request.getHeader("Authorization")).body(response);
+    }
+
+    @PostMapping("/infosProfil")
+    public ResponseEntity<InfosProfilResponse> infosProfil(@RequestBody InfosProfilRequest infosProfilRequest, HttpServletRequest request) {
+        log.debug("REST request to infosProfil : [{}]", infosProfilRequest);
+        InfosProfilResponse response = new InfosProfilResponse();
+        if (
+            controleParam(infosProfilRequest.getCountry()) ||
+            controleParam(infosProfilRequest.getCodeProfil()) ||
+            controleParam(infosProfilRequest.getLangue())
+        ) {
+            Locale locale = defineLocale(infosProfilRequest.getLangue());
+            response.setCode(ICodeDescResponse.PARAM_ABSENT_CODE);
+            response.setDateResponse(Instant.now());
+            response.setDescription(messageSource.getMessage("param.oblig", null, locale));
+            return ResponseEntity.badRequest().header("Authorization", request.getHeader("Authorization")).body(response);
+        }
+        response = apiService.infosProfil(infosProfilRequest, request);
         return ResponseEntity.ok().header("Authorization", request.getHeader("Authorization")).body(response);
     }
 

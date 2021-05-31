@@ -3,11 +3,13 @@ package com.boa.api.service;
 import com.boa.api.domain.ParamEndPoint;
 import com.boa.api.domain.Tracking;
 import com.boa.api.request.CreditIgorRequest;
+import com.boa.api.request.InfosProfilRequest;
 import com.boa.api.request.LoanRequest;
 import com.boa.api.request.OAuthRequest;
 import com.boa.api.request.SearchClientRequest;
 import com.boa.api.request.ValiderCreditIgRequest;
 import com.boa.api.response.CreditIgorResponse;
+import com.boa.api.response.InfosProfilResponse;
 import com.boa.api.response.LoanResponse;
 import com.boa.api.response.OAuthResponse;
 import com.boa.api.response.SearchClientResponse;
@@ -811,6 +813,134 @@ public class ApiService {
                     request.getRequestURI(),
                     e.getMessage(),
                     creditRequest.toString(),
+                    genericResp.getResponseReference()
+                );
+        }
+        trackingService.save(tracking);
+        return genericResp;
+    }
+
+    public InfosProfilResponse infosProfil(InfosProfilRequest infosProfilRequest, HttpServletRequest request) {
+        log.info("Enter in infosProfil=== [{}]", infosProfilRequest);
+        Locale locale = defineLocale(infosProfilRequest.getLangue());
+
+        InfosProfilResponse genericResp = new InfosProfilResponse();
+        Tracking tracking = new Tracking();
+        tracking.setDateRequest(Instant.now());
+
+        Optional<ParamEndPoint> endPoint = endPointService.findByCodeParam("infosProfil");
+        if (!endPoint.isPresent()) {
+            genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
+            genericResp.setDescription(messageSource.getMessage("service.absent", null, locale));
+            genericResp.setDateResponse(Instant.now());
+            tracking =
+                createTracking(
+                    tracking,
+                    ICodeDescResponse.ECHEC_CODE,
+                    "infosProfil",
+                    genericResp.toString(),
+                    infosProfilRequest.toString(),
+                    genericResp.getResponseReference()
+                );
+            trackingService.save(tracking);
+            return genericResp;
+        }
+        try {
+            String jsonStr = new JSONObject()
+                .put("pays", infosProfilRequest.getCountry())
+                .put("codeprofil", infosProfilRequest.getCodeProfil())
+                .toString();
+            log.info("request infosProfil  [{}]", jsonStr);
+            HttpURLConnection conn = utils.doConnexion(endPoint.get().getEndPoints(), jsonStr, "application/json", null, null);
+            BufferedReader br = null;
+            JSONObject obj = new JSONObject();
+            String result = "";
+            log.info("resp code infosProfil [{}]", conn.getResponseCode());
+            if (conn != null && conn.getResponseCode() == 200) {
+                br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                String ligne = br.readLine();
+                while (ligne != null) {
+                    result += ligne;
+                    ligne = br.readLine();
+                }
+                log.info("infosProfil result ===== [{}]", result);
+                obj = new JSONObject(result);
+
+                ObjectMapper mapper = new ObjectMapper();
+                Map<String, Object> map = mapper.readValue(obj.toString(), Map.class);
+
+                if (
+                    obj.toString() != null && !obj.isNull("infosProfil")
+                    /* &&
+                    !obj.getJSONObject("response").isNull("p_code_retour") &&
+                    obj.getJSONObject("response").get("p_code_retour").equals("0100")*/
+                ) {
+                    genericResp.setCode(ICodeDescResponse.SUCCES_CODE);
+                    genericResp.setDescription(messageSource.getMessage("infosProfil.ig.success", null, locale));
+                    genericResp.setDateResponse(Instant.now());
+                    obj = obj.getJSONObject("infosProfil");
+                    map = mapper.readValue(obj.toString(), Map.class);
+                    genericResp.setDataCredit(map);
+                    tracking =
+                        createTracking(
+                            tracking,
+                            ICodeDescResponse.SUCCES_CODE,
+                            request.getRequestURI(),
+                            genericResp.toString(),
+                            infosProfilRequest.toString(),
+                            genericResp.getResponseReference()
+                        );
+                } else {
+                    genericResp.setDataCredit(map);
+                    genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
+                    genericResp.setDateResponse(Instant.now());
+                    genericResp.setDescription(messageSource.getMessage("infosProfil.ig.error", null, locale));
+                    tracking =
+                        createTracking(
+                            tracking,
+                            ICodeDescResponse.ECHEC_CODE,
+                            request.getRequestURI(),
+                            genericResp.toString(),
+                            infosProfilRequest.toString(),
+                            genericResp.getResponseReference()
+                        );
+                }
+            } else {
+                br = new BufferedReader(new InputStreamReader(conn.getErrorStream()));
+                String ligne = br.readLine();
+                while (ligne != null) {
+                    result += ligne;
+                    ligne = br.readLine();
+                }
+                log.info("resp infosProfilRequest error ===== [{}]", result);
+                obj = new JSONObject(result);
+
+                obj = new JSONObject(result);
+                genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
+                genericResp.setDateResponse(Instant.now());
+                genericResp.setDescription(messageSource.getMessage("auth.error.exep", null, locale));
+                tracking =
+                    createTracking(
+                        tracking,
+                        ICodeDescResponse.ECHEC_CODE,
+                        request.getRequestURI(),
+                        genericResp.toString(),
+                        infosProfilRequest.toString(),
+                        genericResp.getResponseReference()
+                    );
+            }
+        } catch (Exception e) {
+            log.error("Exception in validateCreditIg [{}]", e);
+            genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
+            genericResp.setDateResponse(Instant.now());
+            genericResp.setDescription(messageSource.getMessage("auth.error.exep", null, locale) + e.getMessage());
+            tracking =
+                createTracking(
+                    tracking,
+                    ICodeDescResponse.ECHEC_CODE,
+                    request.getRequestURI(),
+                    e.getMessage(),
+                    infosProfilRequest.toString(),
                     genericResp.getResponseReference()
                 );
         }
