@@ -1,5 +1,7 @@
 package com.boa.api.web.rest;
 
+import com.boa.api.request.AmtIgorRequest;
+import com.boa.api.request.AmtIngecRequest;
 import com.boa.api.request.CreditIgorRequest;
 import com.boa.api.request.InfosProfilRequest;
 import com.boa.api.request.LoanRequest;
@@ -8,6 +10,7 @@ import com.boa.api.request.SearchClientRequest;
 import com.boa.api.request.ValiderCreditIgRequest;
 import com.boa.api.response.CreditIgorResponse;
 import com.boa.api.response.InfosProfilResponse;
+import com.boa.api.response.IngecResponse;
 import com.boa.api.response.LoanResponse;
 import com.boa.api.response.OAuthResponse;
 import com.boa.api.response.SearchClientResponse;
@@ -182,6 +185,36 @@ public class ApiResource {
             return ResponseEntity.badRequest().header("Authorization", request.getHeader("Authorization")).body(response);
         }
         response = apiService.infosProfil(infosProfilRequest, request);
+        return ResponseEntity.ok().header("Authorization", request.getHeader("Authorization")).body(response);
+    }
+
+    @PostMapping("/amortissementIgor")
+    public ResponseEntity<IngecResponse> amortissementIgor(@RequestBody AmtIgorRequest amtRequest, HttpServletRequest request) {
+        log.debug("REST request to amortissementIgor : [{}]", amtRequest);
+        IngecResponse response = new IngecResponse();
+        if (controleParam(amtRequest.getCountry()) || controleParam(amtRequest.getLangue()) || controleParam(amtRequest.getNooper())) {
+            Locale locale = defineLocale(amtRequest.getLangue());
+            response.setCode(ICodeDescResponse.PARAM_ABSENT_CODE);
+            response.setDateResponse(Instant.now());
+            response.setDescription(messageSource.getMessage("param.oblig", null, locale));
+            return ResponseEntity.badRequest().header("Authorization", request.getHeader("Authorization")).body(response);
+        }
+        response = apiService.amortissementIgor(amtRequest, request);
+        return ResponseEntity.ok().header("Authorization", request.getHeader("Authorization")).body(response);
+    }
+
+    @PostMapping("/amortissementIngec")
+    public ResponseEntity<IngecResponse> amortissementIngec(@RequestBody AmtIngecRequest amtRequest, HttpServletRequest request) {
+        log.debug("REST request to amortissementIngec : [{}]", amtRequest);
+        IngecResponse response = new IngecResponse();
+        if (controleParam(amtRequest.getCountry()) || controleParam(amtRequest.getLangue()) || controleParam(amtRequest.getNooper())) {
+            Locale locale = defineLocale(amtRequest.getLangue());
+            response.setCode(ICodeDescResponse.PARAM_ABSENT_CODE);
+            response.setDateResponse(Instant.now());
+            response.setDescription(messageSource.getMessage("param.oblig", null, locale));
+            return ResponseEntity.badRequest().header("Authorization", request.getHeader("Authorization")).body(response);
+        }
+        response = apiService.amortissementIngec(amtRequest, request);
         return ResponseEntity.ok().header("Authorization", request.getHeader("Authorization")).body(response);
     }
 
