@@ -59,7 +59,7 @@ public class ApiResource {
         return ResponseEntity.ok().header("Authorization", request.getHeader("Authorization")).body(response);
     }
 
-    @PostMapping("/getClients")
+    @PostMapping("/situationClient")
     public ResponseEntity<SearchClientResponse> getClients(@RequestBody SearchClientRequest clientRequest, HttpServletRequest request) {
         log.debug("REST request to getClients : [{}]", clientRequest);
         SearchClientResponse response = new SearchClientResponse();

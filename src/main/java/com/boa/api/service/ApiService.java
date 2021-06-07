@@ -374,11 +374,11 @@ public class ApiService {
         }
         try {
             String jsonStr = new JSONObject()
-                .put("loanType", loanRequest.getLoantype())
+                .put("loantype", loanRequest.getLoantype())
                 .put("client", loanRequest.getClient())
-                .put("currentAccount", loanRequest.getCurrentaccount())
+                .put("currentaccount", loanRequest.getCurrentaccount())
                 .put("currency", loanRequest.getCurrency())
-                .put("loanAmount", loanRequest.getLoanamount())
+                .put("loanamount", loanRequest.getLoanamount())
                 .put("firstpaymentday", loanRequest.getFirstpaymentday())
                 .put("contractdate", loanRequest.getContractdate())
                 .put("duration", loanRequest.getDuration())

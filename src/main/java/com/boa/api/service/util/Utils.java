@@ -1,5 +1,6 @@
 package com.boa.api.service.util;
 
+import com.boa.api.config.ApplicationProperties;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
@@ -12,7 +13,12 @@ import org.springframework.util.StringUtils;
 @Component
 public class Utils {
 
+    private final ApplicationProperties applicationProperties;
     private final Logger log = LoggerFactory.getLogger(Utils.class);
+
+    public Utils(ApplicationProperties applicationProperties) {
+        this.applicationProperties = applicationProperties;
+    }
 
     /*
      * private final Random RANDOM = new SecureRandom(); public String getRandomId
@@ -30,6 +36,8 @@ public class Utils {
             conn.setDoOutput(true);
             conn.setRequestMethod("POST");
             conn.setRequestProperty("Content-Type", appType);
+            conn.setConnectTimeout(applicationProperties.getTimeOut()); //5000 ms <=> 5s
+            conn.setReadTimeout(applicationProperties.getTimeOut()); //5000 ms <=> 5s
             if (!StringUtils.isEmpty(appRetour)) conn.setRequestProperty("Accept", appRetour);
 
             if (!StringUtils.isEmpty(token)) conn.setRequestProperty("Authorization", token);
