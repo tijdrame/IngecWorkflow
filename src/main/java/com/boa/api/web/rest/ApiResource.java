@@ -2,6 +2,7 @@ package com.boa.api.web.rest;
 
 import com.boa.api.request.AmtIgorRequest;
 import com.boa.api.request.AmtIngecRequest;
+import com.boa.api.request.AutorisationRequest;
 import com.boa.api.request.CreditIgorRequest;
 import com.boa.api.request.InfosProfilRequest;
 import com.boa.api.request.LoanRequest;
@@ -215,6 +216,21 @@ public class ApiResource {
             return ResponseEntity.badRequest().header("Authorization", request.getHeader("Authorization")).body(response);
         }
         response = apiService.amortissementIngec(amtRequest, request);
+        return ResponseEntity.ok().header("Authorization", request.getHeader("Authorization")).body(response);
+    }
+
+    @PostMapping("/autorisation")
+    public ResponseEntity<IngecResponse> autorisation(@RequestBody AutorisationRequest autRequest, HttpServletRequest request) {
+        log.debug("REST request to autorisation : [{}]", autRequest);
+        IngecResponse response = new IngecResponse();
+        if (controleParam(autRequest.getCountry()) || controleParam(autRequest.getLangue())) {
+            Locale locale = defineLocale(autRequest.getLangue());
+            response.setCode(ICodeDescResponse.PARAM_ABSENT_CODE);
+            response.setDateResponse(Instant.now());
+            response.setDescription(messageSource.getMessage("param.oblig", null, locale));
+            return ResponseEntity.badRequest().header("Authorization", request.getHeader("Authorization")).body(response);
+        }
+        response = apiService.autorisation(autRequest, request);
         return ResponseEntity.ok().header("Authorization", request.getHeader("Authorization")).body(response);
     }
 

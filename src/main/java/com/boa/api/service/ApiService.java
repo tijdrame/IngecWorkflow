@@ -4,6 +4,7 @@ import com.boa.api.domain.ParamEndPoint;
 import com.boa.api.domain.Tracking;
 import com.boa.api.request.AmtIgorRequest;
 import com.boa.api.request.AmtIngecRequest;
+import com.boa.api.request.AutorisationRequest;
 import com.boa.api.request.CreditIgorRequest;
 import com.boa.api.request.InfosProfilRequest;
 import com.boa.api.request.LoanRequest;
@@ -1194,6 +1195,152 @@ public class ApiService {
                     request.getRequestURI(),
                     e.getMessage(),
                     amtRequest.toString(),
+                    genericResp.getResponseReference()
+                );
+        }
+        trackingService.save(tracking);
+        return genericResp;
+    }
+
+    public IngecResponse autorisation(AutorisationRequest autRequest, HttpServletRequest request) {
+        log.info("Enter in autorisation=== [{}]", autRequest);
+        Locale locale = defineLocale(autRequest.getLangue());
+
+        IngecResponse genericResp = new IngecResponse();
+        Tracking tracking = new Tracking();
+        tracking.setDateRequest(Instant.now());
+
+        Optional<ParamEndPoint> endPoint = endPointService.findByCodeParam("autorisation");
+        if (!endPoint.isPresent()) {
+            genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
+            genericResp.setDescription(messageSource.getMessage("service.absent", null, locale));
+            genericResp.setDateResponse(Instant.now());
+            tracking =
+                createTracking(
+                    tracking,
+                    ICodeDescResponse.ECHEC_CODE,
+                    "autorisation",
+                    genericResp.toString(),
+                    autRequest.toString(),
+                    genericResp.getResponseReference()
+                );
+            trackingService.save(tracking);
+            return genericResp;
+        }
+        try {
+            String jsonStr = new JSONObject()
+                .put("pays", autRequest.getCountry())
+                .put("iddossier", autRequest.getIdDossier())
+                .put("coddossier", autRequest.getCodDossier())
+                .put("expl", autRequest.getExpl())
+                .put("client", autRequest.getClient())
+                .put("ncg", autRequest.getNcg())
+                .put("dev", autRequest.getDevise())
+                .put("montant", autRequest.getMontant())
+                .put("date_debut", autRequest.getDateDebut())
+                .put("date_ech", autRequest.getDateEch())
+                .put("cpt", autRequest.getCompte())
+                .put("valide", autRequest.getValide())
+                .toString();
+            log.info("request autorisation  [{}]", jsonStr);
+            HttpURLConnection conn = utils.doConnexion(endPoint.get().getEndPoints(), jsonStr, "application/json", null, null);
+            BufferedReader br = null;
+            JSONObject obj = new JSONObject();
+            String result = "";
+            log.info("resp code autorisation [{}]", conn.getResponseCode());
+            if (conn != null && conn.getResponseCode() == 200) {
+                br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                String ligne = br.readLine();
+                while (ligne != null) {
+                    result += ligne;
+                    ligne = br.readLine();
+                }
+                log.info("autorisation result ===== [{}]", result);
+                obj = new JSONObject(result);
+
+                ObjectMapper mapper = new ObjectMapper();
+                Map<String, Object> map = mapper.readValue(obj.toString(), Map.class);
+
+                if (
+                    obj.toString() != null &&
+                    !obj.isNull("wfcredit") &&
+                    !obj.getJSONObject("wfcredit").isNull("response") &&
+                    !obj.getJSONObject("wfcredit").getJSONObject("response").isNull("code_retour") &&
+                    obj.getJSONObject("wfcredit").getJSONObject("response").get("code_retour").equals("0100")
+                ) {
+                    genericResp.setCode(ICodeDescResponse.SUCCES_CODE);
+                    genericResp.setDescription(messageSource.getMessage("auto.decouv.ig.success", null, locale));
+                    genericResp.setDateResponse(Instant.now());
+                    obj = obj.getJSONObject("wfcredit").getJSONObject("response");
+                    map = mapper.readValue(obj.toString(), Map.class);
+                    map.put("message_retour", messageSource.getMessage("auto.decouv.ig.success", null, locale));
+                    genericResp.setData(map);
+                    tracking =
+                        createTracking(
+                            tracking,
+                            ICodeDescResponse.SUCCES_CODE,
+                            request.getRequestURI(),
+                            genericResp.toString(),
+                            autRequest.toString(),
+                            genericResp.getResponseReference()
+                        );
+                } else if (
+                    obj.toString() != null &&
+                    !obj.isNull("wfcredit") &&
+                    !obj.getJSONObject("wfcredit").isNull("response") &&
+                    !obj.getJSONObject("wfcredit").getJSONObject("response").isNull("code_retour") &&
+                    !obj.getJSONObject("wfcredit").getJSONObject("response").get("code_retour").equals("0100")
+                ) {
+                    obj = obj.getJSONObject("wfcredit").getJSONObject("response");
+                    map = mapper.readValue(obj.toString(), Map.class);
+                    genericResp.setData(map);
+                    genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
+                    genericResp.setDateResponse(Instant.now());
+                    genericResp.setDescription(messageSource.getMessage("infosProfil.ig.error", null, locale));
+                    tracking =
+                        createTracking(
+                            tracking,
+                            ICodeDescResponse.ECHEC_CODE,
+                            request.getRequestURI(),
+                            genericResp.toString(),
+                            autRequest.toString(),
+                            genericResp.getResponseReference()
+                        );
+                }
+            } else {
+                br = new BufferedReader(new InputStreamReader(conn.getErrorStream()));
+                String ligne = br.readLine();
+                while (ligne != null) {
+                    result += ligne;
+                    ligne = br.readLine();
+                }
+                log.info("resp autorisation error ===== [{}]", result);
+                obj = new JSONObject(result);
+                genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
+                genericResp.setDateResponse(Instant.now());
+                genericResp.setDescription(messageSource.getMessage("auth.error.exep", null, locale));
+                tracking =
+                    createTracking(
+                        tracking,
+                        ICodeDescResponse.ECHEC_CODE,
+                        request.getRequestURI(),
+                        genericResp.toString(),
+                        autRequest.toString(),
+                        genericResp.getResponseReference()
+                    );
+            }
+        } catch (Exception e) {
+            log.error("Exception in autorisation [{}]", e);
+            genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
+            genericResp.setDateResponse(Instant.now());
+            genericResp.setDescription(messageSource.getMessage("auth.error.exep", null, locale) + e.getMessage());
+            tracking =
+                createTracking(
+                    tracking,
+                    ICodeDescResponse.ECHEC_CODE,
+                    request.getRequestURI(),
+                    e.getMessage(),
+                    autRequest.toString(),
                     genericResp.getResponseReference()
                 );
         }
