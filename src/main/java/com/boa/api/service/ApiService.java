@@ -5,10 +5,14 @@ import com.boa.api.domain.Tracking;
 import com.boa.api.request.AmtIgorRequest;
 import com.boa.api.request.AmtIngecRequest;
 import com.boa.api.request.AutorisationRequest;
+import com.boa.api.request.ComptaTAERequest;
 import com.boa.api.request.CreditIgorRequest;
 import com.boa.api.request.InfosProfilRequest;
+import com.boa.api.request.ListAutorisatioRequest;
+import com.boa.api.request.ListSansAutorisatioRequest;
 import com.boa.api.request.LoanRequest;
 import com.boa.api.request.OAuthRequest;
+import com.boa.api.request.RemboursementTAERequest;
 import com.boa.api.request.SearchClientRequest;
 import com.boa.api.request.ValiderCreditIgRequest;
 import com.boa.api.response.CreditIgorResponse;
@@ -25,12 +29,14 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.time.Instant;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import javax.servlet.http.HttpServletRequest;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Service;
@@ -1341,6 +1347,629 @@ public class ApiService {
                     request.getRequestURI(),
                     e.getMessage(),
                     autRequest.toString(),
+                    genericResp.getResponseReference()
+                );
+        }
+        trackingService.save(tracking);
+        return genericResp;
+    }
+
+    public IngecResponse comptaTAE(ComptaTAERequest cRequest, HttpServletRequest request) {
+        log.info("Enter in comptaTAE=== [{}]", cRequest);
+        Locale locale = defineLocale(cRequest.getLangue());
+
+        IngecResponse genericResp = new IngecResponse();
+        Tracking tracking = new Tracking();
+        tracking.setDateRequest(Instant.now());
+
+        Optional<ParamEndPoint> endPoint = endPointService.findByCodeParam("comptaTAE");
+        if (!endPoint.isPresent()) {
+            genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
+            genericResp.setDescription(messageSource.getMessage("service.absent", null, locale));
+            genericResp.setDateResponse(Instant.now());
+            tracking =
+                createTracking(
+                    tracking,
+                    ICodeDescResponse.ECHEC_CODE,
+                    "comptaTAE",
+                    genericResp.toString(),
+                    cRequest.toString(),
+                    genericResp.getResponseReference()
+                );
+            trackingService.save(tracking);
+            return genericResp;
+        }
+        try {
+            String jsonStr = new JSONObject()
+                .put("pays", cRequest.getCountry())
+                .put("code_assur", cRequest.getCodeAssur())
+                .put("nooper", cRequest.getNoOper())
+                .put("code_oper", cRequest.getCodeOper())
+                .put("refrel", cRequest.getRefrel())
+                .put("ncg_cli", cRequest.getNcgClient())
+                .put("cpt_cli", cRequest.getCompteClient())
+                .put("ncg_assur", cRequest.getNcgAssur())
+                .put("ncg_fiscal", cRequest.getNcgFiscal())
+                .put("cpt_assur", cRequest.getCptAssur())
+                .put("ncg_assur_prdt", cRequest.getNcgAssurPrdt())
+                .put("cpt_assur_prdt", cRequest.getCptAssurPrdt())
+                .put("cpt_fiscal", cRequest.getCptFiscal())
+                .put("mnt_assur", cRequest.getMntAssur())
+                .put("mnt_fiscal", cRequest.getMntFiscal())
+                .put("taux_cions", cRequest.getTauxCions())
+                .put("mnt_pret", cRequest.getMntPret())
+                .put("nom_cli", cRequest.getNomClient())
+                .put("client", cRequest.getClient())
+                .put("id_dossier", cRequest.getIdDossier())
+                .toString();
+            log.info("request comptaTAE  [{}]", jsonStr);
+            HttpURLConnection conn = utils.doConnexion(endPoint.get().getEndPoints(), jsonStr, "application/json", null, null);
+            BufferedReader br = null;
+            JSONObject obj = new JSONObject();
+            String result = "";
+            log.info("resp code comptaTAE [{}]", conn.getResponseCode());
+            if (conn != null && conn.getResponseCode() == 200) {
+                br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                String ligne = br.readLine();
+                while (ligne != null) {
+                    result += ligne;
+                    ligne = br.readLine();
+                }
+                log.info("comptaTAE result ===== [{}]", result);
+                obj = new JSONObject(result);
+
+                ObjectMapper mapper = new ObjectMapper();
+                Map<String, Object> map = mapper.readValue(obj.toString(), Map.class);
+
+                if (
+                    obj.toString() != null &&
+                    !obj.isNull("wfcredit") &&
+                    !obj.getJSONObject("wfcredit").isNull("comptatae") &&
+                    !obj.getJSONObject("wfcredit").getJSONObject("comptatae").isNull("p_code_retour") &&
+                    obj.getJSONObject("wfcredit").getJSONObject("comptatae").get("p_code_retour").equals("0100")
+                ) {
+                    genericResp.setCode(ICodeDescResponse.SUCCES_CODE);
+                    genericResp.setDescription(messageSource.getMessage("comptaTAE.success", null, locale));
+                    genericResp.setDateResponse(Instant.now());
+                    obj = obj.getJSONObject("wfcredit").getJSONObject("comptatae");
+                    map = mapper.readValue(obj.toString(), Map.class);
+                    map.put("p_message_retour", messageSource.getMessage("comptaTAE.success", null, locale));
+                    genericResp.setData(map);
+                    tracking =
+                        createTracking(
+                            tracking,
+                            ICodeDescResponse.SUCCES_CODE,
+                            request.getRequestURI(),
+                            genericResp.toString(),
+                            cRequest.toString(),
+                            genericResp.getResponseReference()
+                        );
+                } else if (
+                    obj.toString() != null &&
+                    !obj.isNull("wfcredit") &&
+                    !obj.getJSONObject("wfcredit").isNull("comptatae") &&
+                    !obj.getJSONObject("wfcredit").getJSONObject("comptatae").isNull("p_code_retour") &&
+                    !obj.getJSONObject("wfcredit").getJSONObject("comptatae").get("p_code_retour").equals("0100")
+                ) {
+                    obj = obj.getJSONObject("wfcredit").getJSONObject("comptatae");
+                    map = mapper.readValue(obj.toString(), Map.class);
+                    genericResp.setData(map);
+                    genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
+                    genericResp.setDateResponse(Instant.now());
+                    genericResp.setDescription(messageSource.getMessage("infosProfil.ig.error", null, locale));
+                    tracking =
+                        createTracking(
+                            tracking,
+                            ICodeDescResponse.ECHEC_CODE,
+                            request.getRequestURI(),
+                            genericResp.toString(),
+                            cRequest.toString(),
+                            genericResp.getResponseReference()
+                        );
+                }
+            } else {
+                br = new BufferedReader(new InputStreamReader(conn.getErrorStream()));
+                String ligne = br.readLine();
+                while (ligne != null) {
+                    result += ligne;
+                    ligne = br.readLine();
+                }
+                log.info("resp comptaTAE error ===== [{}]", result);
+                obj = new JSONObject(result);
+                genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
+                genericResp.setDateResponse(Instant.now());
+                genericResp.setDescription(messageSource.getMessage("auth.error.exep", null, locale));
+                tracking =
+                    createTracking(
+                        tracking,
+                        ICodeDescResponse.ECHEC_CODE,
+                        request.getRequestURI(),
+                        genericResp.toString(),
+                        cRequest.toString(),
+                        genericResp.getResponseReference()
+                    );
+            }
+        } catch (Exception e) {
+            log.error("Exception in comptaTAE [{}]", e);
+            genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
+            genericResp.setDateResponse(Instant.now());
+            genericResp.setDescription(messageSource.getMessage("auth.error.exep", null, locale) + e.getMessage());
+            tracking =
+                createTracking(
+                    tracking,
+                    ICodeDescResponse.ECHEC_CODE,
+                    request.getRequestURI(),
+                    e.getMessage(),
+                    cRequest.toString(),
+                    genericResp.getResponseReference()
+                );
+        }
+        trackingService.save(tracking);
+        return genericResp;
+    }
+
+    public IngecResponse remboursementTAE(RemboursementTAERequest rRequest, HttpServletRequest request) {
+        log.info("Enter in remboursementTAE=== [{}]", rRequest);
+        Locale locale = defineLocale(rRequest.getLangue());
+
+        IngecResponse genericResp = new IngecResponse();
+        Tracking tracking = new Tracking();
+        tracking.setDateRequest(Instant.now());
+
+        Optional<ParamEndPoint> endPoint = endPointService.findByCodeParam("remboursementTAE");
+        if (!endPoint.isPresent()) {
+            genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
+            genericResp.setDescription(messageSource.getMessage("service.absent", null, locale));
+            genericResp.setDateResponse(Instant.now());
+            tracking =
+                createTracking(
+                    tracking,
+                    ICodeDescResponse.ECHEC_CODE,
+                    "autorisation",
+                    genericResp.toString(),
+                    rRequest.toString(),
+                    genericResp.getResponseReference()
+                );
+            trackingService.save(tracking);
+            return genericResp;
+        }
+        try {
+            String jsonStr = new JSONObject()
+                .put("pays", rRequest.getCountry())
+                .put("dat_remb_ant", rRequest.getDateRembAnt())
+                .put("nooper", rRequest.getNooper())
+                .put("num_seq", rRequest.getNumSeq())
+                .put("mnt_rest_du", rRequest.getMntRestDu())
+                .put("mnt_ramb_ant", rRequest.getMntRembAnt())
+                .put("mnt_penalite", rRequest.getMntPenalite())
+                .put("mnt_taxe_pen", rRequest.getMntTaxePen())
+                .put("taux_penalite", rRequest.getTauxPenalite())
+                .toString();
+            log.info("request remboursementTAE  [{}]", jsonStr);
+            HttpURLConnection conn = utils.doConnexion(endPoint.get().getEndPoints(), jsonStr, "application/json", null, null);
+            BufferedReader br = null;
+            JSONObject obj = new JSONObject();
+            String result = "";
+            log.info("resp code remboursementTAE [{}]", conn.getResponseCode());
+            ObjectMapper mapper = new ObjectMapper();
+            Map<String, Object> map = mapper.readValue(obj.toString(), Map.class);
+            if (conn != null && conn.getResponseCode() == 200) {
+                br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                String ligne = br.readLine();
+                while (ligne != null) {
+                    result += ligne;
+                    ligne = br.readLine();
+                }
+                log.info("remboursementTAE result ===== [{}]", result);
+                obj = new JSONObject(result);
+
+                if (
+                    obj.toString() != null &&
+                    !obj.isNull("wfcredit") &&
+                    !obj.getJSONObject("wfcredit").isNull("rembantic") &&
+                    !obj.getJSONObject("wfcredit").getJSONObject("rembantic").isNull("p_code_retour") &&
+                    obj.getJSONObject("wfcredit").getJSONObject("rembantic").get("p_code_retour").equals("0100")
+                ) {
+                    genericResp.setCode(ICodeDescResponse.SUCCES_CODE);
+                    genericResp.setDescription(messageSource.getMessage("remb.success", null, locale));
+                    genericResp.setDateResponse(Instant.now());
+                    obj = obj.getJSONObject("wfcredit").getJSONObject("rembantic");
+                    map = mapper.readValue(obj.toString(), Map.class);
+                    map.put("message_retour", messageSource.getMessage("remb.success", null, locale));
+                    genericResp.setData(map);
+                    tracking =
+                        createTracking(
+                            tracking,
+                            ICodeDescResponse.SUCCES_CODE,
+                            request.getRequestURI(),
+                            genericResp.toString(),
+                            rRequest.toString(),
+                            genericResp.getResponseReference()
+                        );
+                } else if (
+                    obj.toString() != null &&
+                    !obj.isNull("wfcredit") &&
+                    !obj.getJSONObject("wfcredit").isNull("rembantic") &&
+                    !obj.getJSONObject("wfcredit").getJSONObject("rembantic").isNull("p_code_retour") &&
+                    !obj.getJSONObject("wfcredit").getJSONObject("rembantic").get("p_code_retour").equals("0100")
+                ) {
+                    obj = obj.getJSONObject("wfcredit").getJSONObject("rembantic");
+                    //TODO construct resp basé sur le p_code_retour
+                    map = mapper.readValue(obj.toString(), Map.class);
+                    genericResp.setData(map);
+                    genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
+                    genericResp.setDateResponse(Instant.now());
+                    genericResp.setDescription(messageSource.getMessage("infosProfil.ig.error", null, locale));
+                    tracking =
+                        createTracking(
+                            tracking,
+                            ICodeDescResponse.ECHEC_CODE,
+                            request.getRequestURI(),
+                            genericResp.toString(),
+                            rRequest.toString(),
+                            genericResp.getResponseReference()
+                        );
+                }
+            } else {
+                br = new BufferedReader(new InputStreamReader(conn.getErrorStream()));
+                String ligne = br.readLine();
+                while (ligne != null) {
+                    result += ligne;
+                    ligne = br.readLine();
+                }
+                log.info("resp remboursementTAE error ===== [{}]", result);
+                obj = new JSONObject(result);
+                genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
+                genericResp.setDateResponse(Instant.now());
+                //TODO call getMsgEchecRembousementTAE & param all msg
+                /*String ret = getMsgEchecRembousementTAE(obj, locale);
+                map.put("p_message", ret);
+                genericResp.setData(map);
+                genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
+                genericResp.setDateResponse(Instant.now());
+                genericResp.setDescription(ret);*/
+                genericResp.setDescription(messageSource.getMessage("auth.error.exep", null, locale));
+
+                tracking =
+                    createTracking(
+                        tracking,
+                        ICodeDescResponse.ECHEC_CODE,
+                        request.getRequestURI(),
+                        genericResp.toString(),
+                        rRequest.toString(),
+                        genericResp.getResponseReference()
+                    );
+            }
+        } catch (Exception e) {
+            log.error("Exception in remboursementTAE [{}]", e);
+            genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
+            genericResp.setDateResponse(Instant.now());
+            genericResp.setDescription(messageSource.getMessage("auth.error.exep", null, locale) + e.getMessage());
+            tracking =
+                createTracking(
+                    tracking,
+                    ICodeDescResponse.ECHEC_CODE,
+                    request.getRequestURI(),
+                    e.getMessage(),
+                    rRequest.toString(),
+                    genericResp.getResponseReference()
+                );
+        }
+        trackingService.save(tracking);
+        return genericResp;
+    }
+
+    private String getMsgEchecRembousementTAE(JSONObject obj, Locale locale) {
+        log.info("in getMsgEchecRembousementTAE [{}]", obj.toString());
+        try {
+            if (obj.toString() != null && !obj.isNull("p_code") && obj.get("p_code").equals("0202")) {
+                return messageSource.getMessage("auth.error.0202", null, locale);
+            } else if (obj.toString() != null && !obj.isNull("p_code") && obj.get("p_code").equals("0203")) {
+                return messageSource.getMessage("auth.error.0203", null, locale);
+            } else if (obj.toString() != null && !obj.isNull("p_code") && obj.get("p_code").equals("0204")) {
+                String msg = obj.getString("rmessage");
+                final String[] params = new String[] { msg };
+                return messageSource.getMessage("auth.error.0204", params, locale);
+            } else if (obj.toString() != null && !obj.isNull("p_code") && obj.get("p_code").equals("0205")) {
+                return messageSource.getMessage("auth.error.0205", null, locale);
+            } else if (obj.toString() != null && !obj.isNull("p_code") && obj.get("p_code").equals("0206")) {
+                return messageSource.getMessage("auth.error.0206", null, locale);
+            } else if (obj.toString() != null && !obj.isNull("p_code") && obj.get("p_code").equals("0207")) {
+                return messageSource.getMessage("auth.error.0207", null, locale);
+            } else if (obj.toString() != null && !obj.isNull("p_code") && obj.get("p_code").equals("0208")) {
+                return messageSource.getMessage("auth.error.0208", null, locale);
+            } else if (obj.toString() != null && !obj.isNull("p_code") && obj.get("p_code").equals("0209")) {
+                return messageSource.getMessage("auth.error.0209", null, locale);
+            } else if (obj.toString() != null && !obj.isNull("p_code") && obj.get("p_code").equals("0210")) {
+                return messageSource.getMessage("auth.error.0210", null, locale);
+            } else if (obj.toString() != null && !obj.isNull("p_code") && obj.get("p_code").equals("0211")) {
+                return messageSource.getMessage("auth.error.0211", null, locale);
+            } else if (obj.toString() != null && !obj.isNull("p_code") && obj.get("p_code").equals("0101")) {
+                return messageSource.getMessage("auth.error.0101", null, locale);
+            } else if (obj.toString() != null && !obj.isNull("p_code") && obj.get("p_code").equals("0201")) {
+                return messageSource.getMessage("auth.error.0201", null, locale);
+            } else if (obj.toString() != null && !obj.isNull("p_code") && obj.get("p_code").equals("0200")) {
+                return messageSource.getMessage("auth.error.0200", null, locale);
+            }
+        } catch (Exception e) {
+            return messageSource.getMessage("auth.error.exep", null, locale) + e.getMessage();
+        }
+        return messageSource.getMessage("auth.error.exep", null, locale);
+    }
+
+    public IngecResponse listAutorisation(ListAutorisatioRequest rRequest, HttpServletRequest request) {
+        log.info("Enter in listAutorisation=== [{}]", rRequest);
+        Locale locale = defineLocale(rRequest.getLangue());
+
+        IngecResponse genericResp = new IngecResponse();
+        Tracking tracking = new Tracking();
+        tracking.setDateRequest(Instant.now());
+
+        Optional<ParamEndPoint> endPoint = endPointService.findByCodeParam("listAutorisation");
+        if (!endPoint.isPresent()) {
+            genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
+            genericResp.setDescription(messageSource.getMessage("service.absent", null, locale));
+            genericResp.setDateResponse(Instant.now());
+            tracking =
+                createTracking(
+                    tracking,
+                    ICodeDescResponse.ECHEC_CODE,
+                    "listAutorisation",
+                    genericResp.toString(),
+                    rRequest.toString(),
+                    genericResp.getResponseReference()
+                );
+            trackingService.save(tracking);
+            return genericResp;
+        }
+        try {
+            String jsonStr = new JSONObject().put("pays", rRequest.getCountry()).toString();
+            log.info("request listAutorisation  [{}]", jsonStr);
+            HttpURLConnection conn = utils.doConnexion(endPoint.get().getEndPoints(), jsonStr, "application/json", null, null);
+            BufferedReader br = null;
+            JSONObject obj = new JSONObject();
+            String result = "";
+            log.info("resp code listAutorisation [{}]", conn.getResponseCode());
+            if (conn != null && conn.getResponseCode() == 200) {
+                br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                String ligne = br.readLine();
+                while (ligne != null) {
+                    result += ligne;
+                    ligne = br.readLine();
+                }
+                log.info("listAutorisation result ===== [{}]", result);
+                obj = new JSONObject(result);
+
+                ObjectMapper mapper = new ObjectMapper();
+                Map<String, Object> map = mapper.readValue(obj.toString(), Map.class);
+
+                JSONObject jsObject = null;
+                JSONArray jsArray = null;
+                if (!obj.isNull("wfcredit")) {
+                    if (obj.getJSONObject("wfcredit").get("listautorisation") instanceof JSONObject) jsObject =
+                        obj.getJSONObject("wfcredit").getJSONObject("listautorisation"); else if (
+                        obj.getJSONObject("wfcredit").get("listautorisation") instanceof JSONArray
+                    ) jsArray = obj.getJSONObject("wfcredit").getJSONArray("listautorisation");
+                }
+
+                if (
+                    obj.toString() != null &&
+                    !obj.isNull("wfcredit") &&
+                    ((jsArray != null && !jsArray.isEmpty()) || (jsObject != null && !jsObject.isEmpty()))
+                    /* &&
+                    !obj.getJSONObject("response").isNull("p_code_retour") &&
+                    obj.getJSONObject("response").get("p_code_retour").equals("0100")*/
+                ) {
+                    genericResp.setCode(ICodeDescResponse.SUCCES_CODE);
+                    genericResp.setDescription(messageSource.getMessage("infosProfil.ig.success", null, locale));
+                    genericResp.setDateResponse(Instant.now());
+
+                    /*if(jsArray != null) {
+                        //String str = jsArray.toString();
+                    }  else if(jsObject != null) map = mapper.readValue(jsObject.toString(), Map.class);*/
+                    map = mapper.readValue(obj.toString(), Map.class);
+
+                    genericResp.setData(map);
+                    tracking =
+                        createTracking(
+                            tracking,
+                            ICodeDescResponse.SUCCES_CODE,
+                            request.getRequestURI(),
+                            genericResp.toString(),
+                            rRequest.toString(),
+                            genericResp.getResponseReference()
+                        );
+                } else {
+                    genericResp.setData(map);
+                    genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
+                    genericResp.setDateResponse(Instant.now());
+                    genericResp.setDescription(messageSource.getMessage("infosProfil.ig.error", null, locale));
+                    tracking =
+                        createTracking(
+                            tracking,
+                            ICodeDescResponse.ECHEC_CODE,
+                            request.getRequestURI(),
+                            genericResp.toString(),
+                            rRequest.toString(),
+                            genericResp.getResponseReference()
+                        );
+                }
+            } else {
+                br = new BufferedReader(new InputStreamReader(conn.getErrorStream()));
+                String ligne = br.readLine();
+                while (ligne != null) {
+                    result += ligne;
+                    ligne = br.readLine();
+                }
+                log.info("resp listAutorisation error ===== [{}]", result);
+                obj = new JSONObject(result);
+
+                obj = new JSONObject(result);
+                genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
+                genericResp.setDateResponse(Instant.now());
+                genericResp.setDescription(messageSource.getMessage("auth.error.exep", null, locale));
+                tracking =
+                    createTracking(
+                        tracking,
+                        ICodeDescResponse.ECHEC_CODE,
+                        request.getRequestURI(),
+                        genericResp.toString(),
+                        rRequest.toString(),
+                        genericResp.getResponseReference()
+                    );
+            }
+        } catch (Exception e) {
+            log.error("Exception in listAutorisation [{}]", e);
+            genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
+            genericResp.setDateResponse(Instant.now());
+            genericResp.setDescription(messageSource.getMessage("auth.error.exep", null, locale) + e.getMessage());
+            tracking =
+                createTracking(
+                    tracking,
+                    ICodeDescResponse.ECHEC_CODE,
+                    request.getRequestURI(),
+                    e.getMessage(),
+                    rRequest.toString(),
+                    genericResp.getResponseReference()
+                );
+        }
+        trackingService.save(tracking);
+        return genericResp;
+    }
+
+    public IngecResponse listSansAutorisation(ListSansAutorisatioRequest rRequest, HttpServletRequest request) {
+        log.info("Enter in listSansAutorisation=== [{}]", rRequest);
+        Locale locale = defineLocale(rRequest.getLangue());
+
+        IngecResponse genericResp = new IngecResponse();
+        Tracking tracking = new Tracking();
+        tracking.setDateRequest(Instant.now());
+
+        Optional<ParamEndPoint> endPoint = endPointService.findByCodeParam("listSansAutorisation");
+        if (!endPoint.isPresent()) {
+            genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
+            genericResp.setDescription(messageSource.getMessage("service.absent", null, locale));
+            genericResp.setDateResponse(Instant.now());
+            tracking =
+                createTracking(
+                    tracking,
+                    ICodeDescResponse.ECHEC_CODE,
+                    "listSansAutorisation",
+                    genericResp.toString(),
+                    rRequest.toString(),
+                    genericResp.getResponseReference()
+                );
+            trackingService.save(tracking);
+            return genericResp;
+        }
+        try {
+            String jsonStr = new JSONObject().put("pays", rRequest.getCountry()).put("listncg", rRequest.getListncg()).toString();
+            log.info("request listSansAutorisation  [{}]", jsonStr);
+            HttpURLConnection conn = utils.doConnexion(endPoint.get().getEndPoints(), jsonStr, "application/json", null, null);
+            BufferedReader br = null;
+            JSONObject obj = new JSONObject();
+            String result = "";
+            log.info("resp code listSansAutorisation [{}]", conn.getResponseCode());
+            if (conn != null && conn.getResponseCode() == 200) {
+                br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                String ligne = br.readLine();
+                while (ligne != null) {
+                    result += ligne;
+                    ligne = br.readLine();
+                }
+                log.info("listSansAutorisation result ===== [{}]", result);
+                obj = new JSONObject(result);
+
+                ObjectMapper mapper = new ObjectMapper();
+                Map<String, Object> map = mapper.readValue(obj.toString(), Map.class);
+
+                JSONObject jsObject = null;
+                JSONArray jsArray = null;
+                if (!obj.isNull("wfcredit")) {
+                    if (obj.getJSONObject("wfcredit").get("listeSansAutorisation") instanceof JSONObject) jsObject =
+                        obj.getJSONObject("wfcredit").getJSONObject("listeSansAutorisation"); else if (
+                        obj.getJSONObject("wfcredit").get("listeSansAutorisation") instanceof JSONArray
+                    ) jsArray = obj.getJSONObject("wfcredit").getJSONArray("listeSansAutorisation");
+                }
+
+                if (
+                    obj.toString() != null &&
+                    !obj.isNull("wfcredit") &&
+                    ((jsArray != null && !jsArray.isEmpty()) || (jsObject != null && !jsObject.isEmpty()))
+                    /* &&
+                    !obj.getJSONObject("response").isNull("p_code_retour") &&
+                    obj.getJSONObject("response").get("p_code_retour").equals("0100")*/
+                ) {
+                    genericResp.setCode(ICodeDescResponse.SUCCES_CODE);
+                    genericResp.setDescription(messageSource.getMessage("infosProfil.ig.success", null, locale));
+                    genericResp.setDateResponse(Instant.now());
+
+                    /*if(jsArray != null) {
+                        //String str = jsArray.toString();
+                    }  else if(jsObject != null) map = mapper.readValue(jsObject.toString(), Map.class);*/
+                    map = mapper.readValue(obj.toString(), Map.class);
+
+                    genericResp.setData(map);
+                    tracking =
+                        createTracking(
+                            tracking,
+                            ICodeDescResponse.SUCCES_CODE,
+                            request.getRequestURI(),
+                            genericResp.toString(),
+                            rRequest.toString(),
+                            genericResp.getResponseReference()
+                        );
+                } else {
+                    genericResp.setData(map);
+                    genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
+                    genericResp.setDateResponse(Instant.now());
+                    genericResp.setDescription(messageSource.getMessage("infosProfil.ig.error", null, locale));
+                    tracking =
+                        createTracking(
+                            tracking,
+                            ICodeDescResponse.ECHEC_CODE,
+                            request.getRequestURI(),
+                            genericResp.toString(),
+                            rRequest.toString(),
+                            genericResp.getResponseReference()
+                        );
+                }
+            } else {
+                br = new BufferedReader(new InputStreamReader(conn.getErrorStream()));
+                String ligne = br.readLine();
+                while (ligne != null) {
+                    result += ligne;
+                    ligne = br.readLine();
+                }
+                log.info("resp listSansAutorisation error ===== [{}]", result);
+                obj = new JSONObject(result);
+
+                obj = new JSONObject(result);
+                genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
+                genericResp.setDateResponse(Instant.now());
+                genericResp.setDescription(messageSource.getMessage("auth.error.exep", null, locale));
+                tracking =
+                    createTracking(
+                        tracking,
+                        ICodeDescResponse.ECHEC_CODE,
+                        request.getRequestURI(),
+                        genericResp.toString(),
+                        rRequest.toString(),
+                        genericResp.getResponseReference()
+                    );
+            }
+        } catch (Exception e) {
+            log.error("Exception in listSansAutorisation [{}]", e);
+            genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
+            genericResp.setDateResponse(Instant.now());
+            genericResp.setDescription(messageSource.getMessage("auth.error.exep", null, locale) + e.getMessage());
+            tracking =
+                createTracking(
+                    tracking,
+                    ICodeDescResponse.ECHEC_CODE,
+                    request.getRequestURI(),
+                    e.getMessage(),
+                    rRequest.toString(),
                     genericResp.getResponseReference()
                 );
         }

@@ -3,10 +3,14 @@ package com.boa.api.web.rest;
 import com.boa.api.request.AmtIgorRequest;
 import com.boa.api.request.AmtIngecRequest;
 import com.boa.api.request.AutorisationRequest;
+import com.boa.api.request.ComptaTAERequest;
 import com.boa.api.request.CreditIgorRequest;
 import com.boa.api.request.InfosProfilRequest;
+import com.boa.api.request.ListAutorisatioRequest;
+import com.boa.api.request.ListSansAutorisatioRequest;
 import com.boa.api.request.LoanRequest;
 import com.boa.api.request.OAuthRequest;
+import com.boa.api.request.RemboursementTAERequest;
 import com.boa.api.request.SearchClientRequest;
 import com.boa.api.request.ValiderCreditIgRequest;
 import com.boa.api.response.CreditIgorResponse;
@@ -231,6 +235,69 @@ public class ApiResource {
             return ResponseEntity.badRequest().header("Authorization", request.getHeader("Authorization")).body(response);
         }
         response = apiService.autorisation(autRequest, request);
+        return ResponseEntity.ok().header("Authorization", request.getHeader("Authorization")).body(response);
+    }
+
+    @PostMapping("/comptaTAE")
+    public ResponseEntity<IngecResponse> comptaTAE(@RequestBody ComptaTAERequest cRequest, HttpServletRequest request) {
+        log.debug("REST request to comptaTAE : [{}]", cRequest);
+        IngecResponse response = new IngecResponse();
+        if (controleParam(cRequest.getCountry()) || controleParam(cRequest.getLangue())) {
+            Locale locale = defineLocale(cRequest.getLangue());
+            response.setCode(ICodeDescResponse.PARAM_ABSENT_CODE);
+            response.setDateResponse(Instant.now());
+            response.setDescription(messageSource.getMessage("param.oblig", null, locale));
+            return ResponseEntity.badRequest().header("Authorization", request.getHeader("Authorization")).body(response);
+        }
+        response = apiService.comptaTAE(cRequest, request);
+        return ResponseEntity.ok().header("Authorization", request.getHeader("Authorization")).body(response);
+    }
+
+    @PostMapping("/remboursementTAE")
+    public ResponseEntity<IngecResponse> remboursementTAE(@RequestBody RemboursementTAERequest rRequest, HttpServletRequest request) {
+        log.debug("REST request to remboursementTAE : [{}]", rRequest);
+        IngecResponse response = new IngecResponse();
+        if (controleParam(rRequest.getCountry()) || controleParam(rRequest.getLangue())) {
+            Locale locale = defineLocale(rRequest.getLangue());
+            response.setCode(ICodeDescResponse.PARAM_ABSENT_CODE);
+            response.setDateResponse(Instant.now());
+            response.setDescription(messageSource.getMessage("param.oblig", null, locale));
+            return ResponseEntity.badRequest().header("Authorization", request.getHeader("Authorization")).body(response);
+        }
+        response = apiService.remboursementTAE(rRequest, request);
+        return ResponseEntity.ok().header("Authorization", request.getHeader("Authorization")).body(response);
+    }
+
+    @PostMapping("/listAutorisation")
+    public ResponseEntity<IngecResponse> listAutorisation(@RequestBody ListAutorisatioRequest rRequest, HttpServletRequest request) {
+        log.debug("REST request to listAutorisation : [{}]", rRequest);
+        IngecResponse response = new IngecResponse();
+        if (controleParam(rRequest.getCountry()) || controleParam(rRequest.getLangue())) {
+            Locale locale = defineLocale(rRequest.getLangue());
+            response.setCode(ICodeDescResponse.PARAM_ABSENT_CODE);
+            response.setDateResponse(Instant.now());
+            response.setDescription(messageSource.getMessage("param.oblig", null, locale));
+            return ResponseEntity.badRequest().header("Authorization", request.getHeader("Authorization")).body(response);
+        }
+        response = apiService.listAutorisation(rRequest, request);
+        return ResponseEntity.ok().header("Authorization", request.getHeader("Authorization")).body(response);
+    }
+
+    @PostMapping("/listSansAutorisation")
+    public ResponseEntity<IngecResponse> listSansAutorisation(
+        @RequestBody ListSansAutorisatioRequest rRequest,
+        HttpServletRequest request
+    ) {
+        log.debug("REST request to listSansAutorisation : [{}]", rRequest);
+        IngecResponse response = new IngecResponse();
+        if (controleParam(rRequest.getCountry()) || controleParam(rRequest.getLangue())) {
+            Locale locale = defineLocale(rRequest.getLangue());
+            response.setCode(ICodeDescResponse.PARAM_ABSENT_CODE);
+            response.setDateResponse(Instant.now());
+            response.setDescription(messageSource.getMessage("param.oblig", null, locale));
+            return ResponseEntity.badRequest().header("Authorization", request.getHeader("Authorization")).body(response);
+        }
+        response = apiService.listSansAutorisation(rRequest, request);
         return ResponseEntity.ok().header("Authorization", request.getHeader("Authorization")).body(response);
     }
 
