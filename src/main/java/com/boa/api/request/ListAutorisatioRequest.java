@@ -7,4 +7,5 @@ public class ListAutorisatioRequest {
 
     private String langue;
     private String country;
+    private String agence;
 }

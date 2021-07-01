@@ -1723,7 +1723,7 @@ public class ApiService {
             return genericResp;
         }
         try {
-            String jsonStr = new JSONObject().put("pays", rRequest.getCountry()).toString();
+            String jsonStr = new JSONObject().put("pays", rRequest.getCountry()).put("agence", rRequest.getAgence()).toString();
             log.info("request listAutorisation  [{}]", jsonStr);
             HttpURLConnection conn = utils.doConnexion(endPoint.get().getEndPoints(), jsonStr, "application/json", null, null);
             BufferedReader br = null;
@@ -1863,7 +1863,11 @@ public class ApiService {
             return genericResp;
         }
         try {
-            String jsonStr = new JSONObject().put("pays", rRequest.getCountry()).put("listncg", rRequest.getListncg()).toString();
+            String jsonStr = new JSONObject()
+                .put("pays", rRequest.getCountry())
+                .put("agence", rRequest.getAgence())
+                .put("listncg", rRequest.getListncg())
+                .toString();
             log.info("request listSansAutorisation  [{}]", jsonStr);
             HttpURLConnection conn = utils.doConnexion(endPoint.get().getEndPoints(), jsonStr, "application/json", null, null);
             BufferedReader br = null;

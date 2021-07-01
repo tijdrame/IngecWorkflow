@@ -8,4 +8,5 @@ public class ListSansAutorisatioRequest {
     private String langue;
     private String country;
     private String listncg;
+    private String agence;
 }
