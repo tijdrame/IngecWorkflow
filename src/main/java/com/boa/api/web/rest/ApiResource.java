@@ -5,6 +5,7 @@ import com.boa.api.request.AmtIngecRequest;
 import com.boa.api.request.AutorisationRequest;
 import com.boa.api.request.ComptaTAERequest;
 import com.boa.api.request.CreditIgorRequest;
+import com.boa.api.request.CreditRemboursablesRequest;
 import com.boa.api.request.InfosProfilRequest;
 import com.boa.api.request.ListAutorisatioRequest;
 import com.boa.api.request.ListSansAutorisatioRequest;
@@ -298,6 +299,29 @@ public class ApiResource {
             return ResponseEntity.badRequest().header("Authorization", request.getHeader("Authorization")).body(response);
         }
         response = apiService.listSansAutorisation(rRequest, request);
+        return ResponseEntity.ok().header("Authorization", request.getHeader("Authorization")).body(response);
+    }
+
+    @PostMapping("/getCreditsRemboursables")
+    public ResponseEntity<IngecResponse> getCreditsRemboursables(
+        @RequestBody CreditRemboursablesRequest rRequest,
+        HttpServletRequest request
+    ) {
+        log.debug("REST request to getCreditsRemboursables : [{}]", rRequest);
+        IngecResponse response = new IngecResponse();
+        if (
+            controleParam(rRequest.getCountry()) ||
+            controleParam(rRequest.getLangue()) ||
+            controleParam(rRequest.getClient()) ||
+            controleParam(rRequest.getNcg())
+        ) {
+            Locale locale = defineLocale(rRequest.getLangue());
+            response.setCode(ICodeDescResponse.PARAM_ABSENT_CODE);
+            response.setDateResponse(Instant.now());
+            response.setDescription(messageSource.getMessage("param.oblig", null, locale));
+            return ResponseEntity.badRequest().header("Authorization", request.getHeader("Authorization")).body(response);
+        }
+        response = apiService.getCreditsRemboursables(rRequest, request);
         return ResponseEntity.ok().header("Authorization", request.getHeader("Authorization")).body(response);
     }
 

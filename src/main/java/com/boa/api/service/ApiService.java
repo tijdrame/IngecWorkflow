@@ -7,6 +7,7 @@ import com.boa.api.request.AmtIngecRequest;
 import com.boa.api.request.AutorisationRequest;
 import com.boa.api.request.ComptaTAERequest;
 import com.boa.api.request.CreditIgorRequest;
+import com.boa.api.request.CreditRemboursablesRequest;
 import com.boa.api.request.InfosProfilRequest;
 import com.boa.api.request.ListAutorisatioRequest;
 import com.boa.api.request.ListSansAutorisatioRequest;
@@ -1964,6 +1965,150 @@ public class ApiService {
             }
         } catch (Exception e) {
             log.error("Exception in listSansAutorisation [{}]", e);
+            genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
+            genericResp.setDateResponse(Instant.now());
+            genericResp.setDescription(messageSource.getMessage("auth.error.exep", null, locale) + e.getMessage());
+            tracking =
+                createTracking(
+                    tracking,
+                    ICodeDescResponse.ECHEC_CODE,
+                    request.getRequestURI(),
+                    e.getMessage(),
+                    rRequest.toString(),
+                    genericResp.getResponseReference()
+                );
+        }
+        trackingService.save(tracking);
+        return genericResp;
+    }
+
+    public IngecResponse getCreditsRemboursables(CreditRemboursablesRequest rRequest, HttpServletRequest request) {
+        log.info("Enter in getCreditsRemboursables=== [{}]", rRequest);
+        Locale locale = defineLocale(rRequest.getLangue());
+
+        IngecResponse genericResp = new IngecResponse();
+        Tracking tracking = new Tracking();
+        tracking.setDateRequest(Instant.now());
+
+        Optional<ParamEndPoint> endPoint = endPointService.findByCodeParam("getCreditsRemboursables");
+        if (!endPoint.isPresent()) {
+            genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
+            genericResp.setDescription(messageSource.getMessage("service.absent", null, locale));
+            genericResp.setDateResponse(Instant.now());
+            tracking =
+                createTracking(
+                    tracking,
+                    ICodeDescResponse.ECHEC_CODE,
+                    "getCreditsRemboursables",
+                    genericResp.toString(),
+                    rRequest.toString(),
+                    genericResp.getResponseReference()
+                );
+            trackingService.save(tracking);
+            return genericResp;
+        }
+        try {
+            String jsonStr = new JSONObject()
+                .put("pays", rRequest.getCountry())
+                .put("client", rRequest.getClient())
+                .put("ncg", rRequest.getNcg())
+                .toString();
+            log.info("request getCreditsRemboursables  [{}]", jsonStr);
+            HttpURLConnection conn = utils.doConnexion(endPoint.get().getEndPoints(), jsonStr, "application/json", null, null);
+            BufferedReader br = null;
+            JSONObject obj = new JSONObject();
+            String result = "";
+            log.info("resp code getCreditsRemboursables [{}]", conn.getResponseCode());
+            if (conn != null && conn.getResponseCode() == 200) {
+                br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                String ligne = br.readLine();
+                while (ligne != null) {
+                    result += ligne;
+                    ligne = br.readLine();
+                }
+                log.info("getCreditsRemboursables result ===== [{}]", result);
+                obj = new JSONObject(result);
+
+                ObjectMapper mapper = new ObjectMapper();
+                Map<String, Object> map = mapper.readValue(obj.toString(), Map.class);
+
+                JSONObject jsObject = null;
+                JSONArray jsArray = null;
+                if (!obj.isNull("wfcredit")) {
+                    if (obj.getJSONObject("wfcredit").get("response") instanceof JSONObject) jsObject =
+                        obj.getJSONObject("wfcredit").getJSONObject("response"); else if (
+                        obj.getJSONObject("wfcredit").get("response") instanceof JSONArray
+                    ) jsArray = obj.getJSONObject("wfcredit").getJSONArray("response");
+                }
+
+                if (
+                    obj.toString() != null &&
+                    !obj.isNull("wfcredit") &&
+                    ((jsArray != null && !jsArray.isEmpty()) || (jsObject != null && !jsObject.isEmpty()))
+                    /* &&
+                    !obj.getJSONObject("response").isNull("p_code_retour") &&
+                    obj.getJSONObject("response").get("p_code_retour").equals("0100")*/
+                ) {
+                    genericResp.setCode(ICodeDescResponse.SUCCES_CODE);
+                    genericResp.setDescription(messageSource.getMessage("infosProfil.ig.success", null, locale));
+                    genericResp.setDateResponse(Instant.now());
+
+                    /*if(jsArray != null) {
+                        //String str = jsArray.toString();
+                    }  else if(jsObject != null) map = mapper.readValue(jsObject.toString(), Map.class);*/
+                    map = mapper.readValue(obj.toString(), Map.class);
+
+                    genericResp.setData(map);
+                    tracking =
+                        createTracking(
+                            tracking,
+                            ICodeDescResponse.SUCCES_CODE,
+                            request.getRequestURI(),
+                            genericResp.toString(),
+                            rRequest.toString(),
+                            genericResp.getResponseReference()
+                        );
+                } else {
+                    genericResp.setData(map);
+                    genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
+                    genericResp.setDateResponse(Instant.now());
+                    genericResp.setDescription(messageSource.getMessage("infosProfil.ig.error", null, locale));
+                    tracking =
+                        createTracking(
+                            tracking,
+                            ICodeDescResponse.ECHEC_CODE,
+                            request.getRequestURI(),
+                            genericResp.toString(),
+                            rRequest.toString(),
+                            genericResp.getResponseReference()
+                        );
+                }
+            } else {
+                br = new BufferedReader(new InputStreamReader(conn.getErrorStream()));
+                String ligne = br.readLine();
+                while (ligne != null) {
+                    result += ligne;
+                    ligne = br.readLine();
+                }
+                log.info("resp getCreditsRemboursables error ===== [{}]", result);
+                obj = new JSONObject(result);
+
+                obj = new JSONObject(result);
+                genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
+                genericResp.setDateResponse(Instant.now());
+                genericResp.setDescription(messageSource.getMessage("auth.error.exep", null, locale));
+                tracking =
+                    createTracking(
+                        tracking,
+                        ICodeDescResponse.ECHEC_CODE,
+                        request.getRequestURI(),
+                        genericResp.toString(),
+                        rRequest.toString(),
+                        genericResp.getResponseReference()
+                    );
+            }
+        } catch (Exception e) {
+            log.error("Exception in getCreditsRemboursables [{}]", e);
             genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
             genericResp.setDateResponse(Instant.now());
             genericResp.setDescription(messageSource.getMessage("auth.error.exep", null, locale) + e.getMessage());
