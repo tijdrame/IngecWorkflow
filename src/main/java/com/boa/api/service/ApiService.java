@@ -2216,7 +2216,6 @@ public class ApiService {
                     !obj.getJSONObject("wfcredit").getJSONObject("response").get("code_retour").equals("0100")
                 ) {
                     obj = obj.getJSONObject("wfcredit").getJSONObject("response");
-                    //TODO construct resp basé sur le p_code_retour
                     map = mapper.readValue(obj.toString(), Map.class);
                     genericResp.setData(map);
                     genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
@@ -2243,7 +2242,6 @@ public class ApiService {
                 obj = new JSONObject(result);
                 genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
                 genericResp.setDateResponse(Instant.now());
-                //TODO call getMsgEchecRembousementTAE & param all msg
                 /*String ret = getMsgEchecRembousementTAE(obj, locale);
                 map.put("p_message", ret);
                 genericResp.setData(map);
