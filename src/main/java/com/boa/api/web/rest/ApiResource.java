@@ -8,6 +8,7 @@ import com.boa.api.request.CreditIgorRequest;
 import com.boa.api.request.CreditRemboursablesRequest;
 import com.boa.api.request.InfoAnticipationRequest;
 import com.boa.api.request.InfosProfilRequest;
+import com.boa.api.request.LignesEngagementRequest;
 import com.boa.api.request.ListAutorisatioRequest;
 import com.boa.api.request.ListSansAutorisatioRequest;
 import com.boa.api.request.LoanRequest;
@@ -343,6 +344,21 @@ public class ApiResource {
             return ResponseEntity.badRequest().header("Authorization", request.getHeader("Authorization")).body(response);
         }
         response = apiService.infoAnticipation(rRequest, request);
+        return ResponseEntity.ok().header("Authorization", request.getHeader("Authorization")).body(response);
+    }
+
+    @PostMapping("/lignesEngagement")
+    public ResponseEntity<IngecResponse> lignesEngagement(@RequestBody LignesEngagementRequest rRequest, HttpServletRequest request) {
+        log.debug("REST request to infoAnticipation : [{}]", rRequest);
+        IngecResponse response = new IngecResponse();
+        if (controleParam(rRequest.getCountry()) || controleParam(rRequest.getLangue()) || controleParam(rRequest.getClient())) {
+            Locale locale = defineLocale(rRequest.getLangue());
+            response.setCode(ICodeDescResponse.PARAM_ABSENT_CODE);
+            response.setDateResponse(Instant.now());
+            response.setDescription(messageSource.getMessage("param.oblig", null, locale));
+            return ResponseEntity.badRequest().header("Authorization", request.getHeader("Authorization")).body(response);
+        }
+        response = apiService.lignesEngagement(rRequest, request);
         return ResponseEntity.ok().header("Authorization", request.getHeader("Authorization")).body(response);
     }
 

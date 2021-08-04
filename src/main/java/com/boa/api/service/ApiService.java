@@ -10,6 +10,7 @@ import com.boa.api.request.CreditIgorRequest;
 import com.boa.api.request.CreditRemboursablesRequest;
 import com.boa.api.request.InfoAnticipationRequest;
 import com.boa.api.request.InfosProfilRequest;
+import com.boa.api.request.LignesEngagementRequest;
 import com.boa.api.request.ListAutorisatioRequest;
 import com.boa.api.request.ListSansAutorisatioRequest;
 import com.boa.api.request.LoanRequest;
@@ -2262,6 +2263,143 @@ public class ApiService {
             }
         } catch (Exception e) {
             log.error("Exception in infoAnticipation [{}]", e);
+            genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
+            genericResp.setDateResponse(Instant.now());
+            genericResp.setDescription(messageSource.getMessage("auth.error.exep", null, locale) + e.getMessage());
+            tracking =
+                createTracking(
+                    tracking,
+                    ICodeDescResponse.ECHEC_CODE,
+                    request.getRequestURI(),
+                    e.getMessage(),
+                    rRequest.toString(),
+                    genericResp.getResponseReference()
+                );
+        }
+        trackingService.save(tracking);
+        return genericResp;
+    }
+
+    public IngecResponse lignesEngagement(LignesEngagementRequest rRequest, HttpServletRequest request) {
+        log.info("Enter in lignesEngagement=== [{}]", rRequest);
+        Locale locale = defineLocale(rRequest.getLangue());
+
+        IngecResponse genericResp = new IngecResponse();
+        Tracking tracking = new Tracking();
+        tracking.setDateRequest(Instant.now());
+
+        Optional<ParamEndPoint> endPoint = endPointService.findByCodeParam("lignesEngagement");
+        if (!endPoint.isPresent()) {
+            genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
+            genericResp.setDescription(messageSource.getMessage("service.absent", null, locale));
+            genericResp.setDateResponse(Instant.now());
+            tracking =
+                createTracking(
+                    tracking,
+                    ICodeDescResponse.ECHEC_CODE,
+                    "lignesEngagement",
+                    genericResp.toString(),
+                    rRequest.toString(),
+                    genericResp.getResponseReference()
+                );
+            trackingService.save(tracking);
+            return genericResp;
+        }
+        try {
+            String jsonStr = new JSONObject().put("pays", rRequest.getCountry()).put("client", rRequest.getClient()).toString();
+            log.info("request lignesEngagement  [{}]", jsonStr);
+            HttpURLConnection conn = utils.doConnexion(endPoint.get().getEndPoints(), jsonStr, "application/json", null, null);
+            BufferedReader br = null;
+            JSONObject obj = new JSONObject();
+            String result = "";
+            log.info("resp code lignesEngagement [{}]", conn.getResponseCode());
+            ObjectMapper mapper = new ObjectMapper();
+            Map<String, Object> map = mapper.readValue(obj.toString(), Map.class);
+            if (conn != null && conn.getResponseCode() == 200) {
+                br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                String ligne = br.readLine();
+                while (ligne != null) {
+                    result += ligne;
+                    ligne = br.readLine();
+                }
+                log.info("lignesEngagement result ===== [{}]", result);
+                obj = new JSONObject(result);
+
+                if (
+                    obj.toString() != null && !obj.isNull("Entries") && !obj.getJSONObject("Entries").isNull("Entry")/* &&
+                    !obj.getJSONObject("Entries").getJSONObject("response").isNull("code_retour") &&
+                    obj.getJSONObject("Entries").getJSONObject("response").get("code_retour").equals("0100")*/
+                ) {
+                    genericResp.setCode(ICodeDescResponse.SUCCES_CODE);
+                    genericResp.setDescription(messageSource.getMessage("loan.status.success", null, locale));
+                    genericResp.setDateResponse(Instant.now());
+                    obj = obj.getJSONObject("Entries").getJSONObject("Entry");
+                    map = mapper.readValue(obj.toString(), Map.class);
+                    map.put("message_retour", messageSource.getMessage("loan.status.success", null, locale));
+                    genericResp.setData(map);
+                    tracking =
+                        createTracking(
+                            tracking,
+                            ICodeDescResponse.SUCCES_CODE,
+                            request.getRequestURI(),
+                            genericResp.toString(),
+                            rRequest.toString(),
+                            genericResp.getResponseReference()
+                        );
+                } else /*if (
+                    obj.toString() != null &&
+                    !obj.isNull("wfcredit") &&
+                    !obj.getJSONObject("wfcredit").isNull("response") &&
+                    !obj.getJSONObject("wfcredit").getJSONObject("response").isNull("code_retour") &&
+                    !obj.getJSONObject("wfcredit").getJSONObject("response").get("code_retour").equals("0100")
+                )*/{
+                    /*obj = obj.getJSONObject("Entries");
+                    map = mapper.readValue(obj.toString(), Map.class);
+                    genericResp.setData(map);*/
+                    genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
+                    genericResp.setDateResponse(Instant.now());
+                    genericResp.setDescription(messageSource.getMessage("infosProfil.client.not.found", null, locale));
+                    tracking =
+                        createTracking(
+                            tracking,
+                            ICodeDescResponse.ECHEC_CODE,
+                            request.getRequestURI(),
+                            genericResp.toString(),
+                            rRequest.toString(),
+                            genericResp.getResponseReference()
+                        );
+                }
+            } else {
+                br = new BufferedReader(new InputStreamReader(conn.getErrorStream()));
+                String ligne = br.readLine();
+                while (ligne != null) {
+                    result += ligne;
+                    ligne = br.readLine();
+                }
+                log.info("resp lignesEngagement error ===== [{}]", result);
+                obj = new JSONObject(result);
+                genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
+                genericResp.setDateResponse(Instant.now());
+                /*String ret = getMsgEchecRembousementTAE(obj, locale);
+                map.put("p_message", ret);
+                genericResp.setData(map);
+                genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
+                genericResp.setDateResponse(Instant.now());
+                genericResp.setDescription(ret);*/
+                genericResp.setDescription(messageSource.getMessage("auth.error.exep", null, locale));
+
+                tracking =
+                    createTracking(
+                        tracking,
+                        ICodeDescResponse.ECHEC_CODE,
+                        request.getRequestURI(),
+                        genericResp.toString(),
+                        rRequest.toString(),
+                        genericResp.getResponseReference()
+                    );
+            }
+        } catch (Exception e) {
+            log.error("Exception in lignesEngagement [{}]", e);
             genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
             genericResp.setDateResponse(Instant.now());
             genericResp.setDescription(messageSource.getMessage("auth.error.exep", null, locale) + e.getMessage());
